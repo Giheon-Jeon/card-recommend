@@ -1,0 +1,19 @@
+{
+  "id": "example-card-c",
+  "name": "[예시] 카드 C (적립형)",
+  "issuer": "예시카드사",
+  "cardType": "credit",
+  "annualFee": 20000,
+  "excludedCategories": [],
+  "notes": "포인트 적립형 카드의 예시입니다. type을 point로 설정했습니다.",
+  "tiers": [
+    {
+      "minSpend": 1000000,
+      "benefits": [
+        { "category": "onlineShopping", "type": "point", "rate": 0.02, "capPerMonth": 10000 },
+        { "category": "gas", "type": "point", "rate": 0.03, "capPerMonth": 6000 },
+        { "category": "etc", "type": "point", "rate": 0.005 }
+      ]
+    }
+  ]
+}

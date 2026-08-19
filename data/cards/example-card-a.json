@@ -1,0 +1,28 @@
+{
+  "id": "example-card-a",
+  "name": "[예시] 카드 A",
+  "issuer": "예시카드사",
+  "cardType": "credit",
+  "annualFee": 15000,
+  "excludedCategories": ["mobile"],
+  "notes": "실제 카드로 교체해서 사용하세요. 이 파일은 데이터 구조를 보여주기 위한 예시입니다.",
+  "tiers": [
+    {
+      "minSpend": 300000,
+      "benefits": [
+        { "category": "convenience", "type": "discount", "rate": 0.05, "capPerMonth": 5000 },
+        { "category": "cafe", "type": "discount", "rate": 0.1, "capPerMonth": 5000 },
+        { "category": "transport", "type": "discount", "rate": 0.1, "capPerMonth": 3000 }
+      ]
+    },
+    {
+      "minSpend": 700000,
+      "benefits": [
+        { "category": "convenience", "type": "discount", "rate": 0.05, "capPerMonth": 10000 },
+        { "category": "cafe", "type": "discount", "rate": 0.1, "capPerMonth": 10000 },
+        { "category": "transport", "type": "discount", "rate": 0.1, "capPerMonth": 6000 },
+        { "category": "onlineShopping", "type": "discount", "rate": 0.05, "capPerMonth": 5000 }
+      ]
+    }
+  ]
+}
