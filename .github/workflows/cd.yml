@@ -1,0 +1,46 @@
+name: CD (Continuous Deployment)
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  cd-deploy:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+    
+    - name: Check package.json existence
+      id: check_package
+      run: |
+        if [ -f "package.json" ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Install dependencies
+      if: steps.check_package.outputs.exists == 'true'
+      run: npm ci || npm install
+
+    - name: Build Application (Optional)
+      if: steps.check_package.outputs.exists == 'true'
+      run: npm run build || echo "No build script found"
+
+    - name: Deploy Application (Optional)
+      if: steps.check_package.outputs.exists == 'true'
+      run: |
+        echo "Deploying application to production server..."
+        # 실제 배포 환경에 맞는 배포 액션 또는 스크립트를 이곳에 통합할 수 있습니다.
+        # 예: Vercel, AWS S3, GitHub Pages, Docker 등

@@ -1,23 +1,80 @@
-# 카드 혜택 트래커
+# 카드 혜택 트래커 (Card Benefit Tracker)
+## 보유한 신용/체크카드의 전월실적 조건과 혜택을 정리하고, 지출 패턴에 맞는 최적의 카드를 추천해주는 개인용 웹앱
 
-보유한 신용/체크카드의 전월실적 조건과 혜택을 정리하고, 카테고리별 지출액을 입력하면 어떤 카드를(또는 어떤 조합을) 쓰는 게 유리한지 추천해주는 개인용 웹앱입니다.
+<p align="center">
+  <strong>Giheon-Jeon / card-recommend</strong><br>
+  합리적인 카드 소비를 위한 개인 맞춤형 혜택 계산기
+</p>
 
-## 기술 스택
+---
 
-- Vite + React + TypeScript
-- Tailwind CSS v4 (`@tailwindcss/vite`)
-- Vitest (단위 테스트)
+## 📌 목차
+- [주요 기능](#-주요-기능)
+- [🛠 기술 스택 및 선정 이유](#-기술-스택-및-선정-이유)
+- [🏗 아키텍처 및 폴더 구조](#-아키텍처-및-폴더-구조)
+- [🤝 협업 및 자동화 규칙](#-협업-및-자동화-규칙)
+- [🚀 시작하기](#-시작하기)
+- [📂 카드 데이터 입력하기](#-카드-데이터-입력하기)
 
-## 시작하기
+---
 
+## ✨ 주요 기능
+1. **카드 전월실적 & 혜택 매칭**: 입력된 카드별 전월실적 구간(Tier)과 혜택 한도를 기반으로 정확한 예상 피드백을 연산합니다.
+2. **지출 시뮬레이션**: 카테고리별 예상 지출액을 입력하면 보유한 카드 조합 중 가장 이득이 되는 최적의 카드와 조합을 순위로 추천합니다.
+3. **카드 데이터 구조 유효성 검증**: 자체 검증 스크립트를 통해 카드 데이터 파일 포맷이 일치하는지 자동으로 진단합니다.
+
+---
+
+## 🛠 기술 스택 및 선정 이유
+
+### Frontend
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+
+- **Vite + React**: 가볍고 빠른 빌드 속도로 즉각적인 화면 렌더링 및 생산성을 높이기 위해 선정.
+- **TypeScript**: 카드 데이터 및 계산 로직 내의 데이터 구조(Type) 안정성 및 오차 예방.
+- **Tailwind CSS v4**: `@tailwindcss/vite` 기반으로 빠르고 조화로운 UI 레이아웃 설계.
+- **Vitest**: 계산 로직과 추천 알고리즘의 정확성을 보장하기 위한 단위 테스트 환경 제공.
+
+---
+
+## 🏗 아키텍처 및 폴더 구조
+유지보수성과 계산 로직의 격리를 고려한 구조 채택
+```text
+card-recommend/
+├── 📁 data/                  # 지출 카테고리 정의 및 카드별 JSON 데이터
+│   ├── categories.json       # 지출 카테고리 정의 파일
+│   └── 📁 cards/             # 카드별 데이터 파일 (1 JSON = 1 Card)
+├── 📁 src/                   # React 메인 소스 코드
+│   ├── 📁 types/             # Card, Benefit, SpendingProfile 등 공통 타입 정의
+│   ├── 📁 lib/               # 카드 데이터 로더, 계산기 및 추천 엔진 핵심 로직
+│   ├── 📁 components/        # 지출 시뮬레이터, 카드 리스트, 추천 결과 UI 컴포넌트
+│   └── App.tsx
+├── 📁 tests/                 # Vitest 단위 테스트 파일
+└── 📁 scripts/               # 카드 JSON 데이터 스키마 유효성 검사 스크립트
+```
+
+---
+
+## 🤝 협업 및 자동화 규칙
+- **Git Branch Strategy**: `main` 브랜치 직접 커밋 금지, `BE-전기헌-(이슈번호)` 형태의 Feature 브랜치 전략 준수.
+- **Commit Message Convention**: 규칙적인 이모지 및 태그를 사용한 Conventional Commit 스타일 엄수.
+
+---
+
+## 🚀 시작하기
+아래 명령어를 통해 프로젝트 패키지를 설치하고 개발 서버를 가동합니다.
 ```bash
 npm install
 npm run dev
 ```
 
-## 카드 데이터 입력하기
+---
 
-`data/cards/` 폴더에 있는 `example-card-*.json` 파일은 데이터 구조를 보여주기 위한 **예시**입니다. 실제 보유 카드로 교체하려면 같은 폴더에 카드 1장당 JSON 파일 1개를 만들면 됩니다.
+## 📂 카드 데이터 입력하기
+`data/cards/` 폴더 내에 JSON 형식으로 실제 보유하신 카드 데이터를 작성하여 배치할 수 있습니다. 
 
 ```json
 {
@@ -37,47 +94,7 @@ npm run dev
   ]
 }
 ```
-
-- `category`는 `data/categories.json`에 정의된 ID 중 하나를 사용합니다. 필요한 카테고리가 없으면 이 파일에 추가하세요.
-- `tiers`는 전월실적 구간별 혜택이며, `minSpend` 오름차순으로 작성해야 합니다.
-- `excludedCategories`는 전월실적 산정에서 제외되는 카테고리입니다(세금, 상품권, 통신비 등 카드사마다 다르므로 실제 약관을 확인하세요).
-
-카드 데이터를 추가/수정한 뒤에는 아래 명령으로 구조가 올바른지 검증할 수 있습니다.
-
-```bash
-npm run validate:cards
-```
-
-## 카드 데이터 정확성에 대한 주의
-
-이 저장소에 포함된 예시 카드 데이터는 실제 카드사 혜택과 무관한 가상의 값입니다. 본인의 카드 데이터를 입력할 때는 카드사 공식 홈페이지나 앱에서 최신 약관을 직접 확인해서 반영하시기 바랍니다. 카드 혜택과 전월실적 기준은 카드사가 수시로 변경할 수 있습니다.
-
-## 프로젝트 구조
-
-```
-card-benefit-tracker/
-├── data/
-│   ├── categories.json      # 지출 카테고리 정의
-│   └── cards/                # 카드별 데이터 (JSON, 1파일 = 1카드)
-├── src/
-│   ├── types/                 # Card, Benefit, SpendingProfile 등 타입 정의
-│   ├── lib/
-│   │   ├── loadCards.ts       # data/cards 폴더를 읽어오는 로더
-│   │   ├── benefitCalculator.ts  # 카드 1장 기준 혜택 계산 로직
-│   │   └── recommender.ts        # 카드 랭킹 / 카테고리별 최적 조합 로직
-│   ├── components/
-│   │   ├── SpendingSimulator/ # 카테고리별 지출액 입력 폼
-│   │   ├── CardList/          # 보유 카드 비교 표
-│   │   └── RecommendationResult/  # 추천 결과 및 카테고리별 최적 카드
-│   └── App.tsx
-├── tests/                     # Vitest 단위 테스트
-└── scripts/
-    └── validateCardData.ts    # 카드 JSON 데이터 구조 검증 스크립트
-```
-
-## 앞으로 확장할 만한 것들
-
-- 연회비 대비 실효 혜택(순혜택) 기준 정렬 외에, 혜택 한도 소진율 같은 지표 추가
-- 카드 데이터가 많아지면 JSON 파일 대신 SQLite/Supabase로 이전
-- 지출 프로필을 로컬에 저장(파일 export/import)해서 매번 다시 입력하지 않도록 개선
-- 카드사 공지사항이나 약관 변경 알림 연동
+* **유효성 검사 실행**:
+  ```bash
+  npm run validate:cards
+  ```

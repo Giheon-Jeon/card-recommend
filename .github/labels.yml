@@ -1,0 +1,11 @@
+- name: "✨ Feature"
+  color: "fef2c0"
+  description: "기능 구현"
+
+- name: "🎨 Style"
+  color: "d4c5f9"
+  description: "CSS, HTML, 마크업 등의 스타일링"
+
+- name: "🐛 Bug"
+  color: "82008A"
+  description: "버그 픽스"
