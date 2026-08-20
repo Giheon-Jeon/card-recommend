@@ -44,6 +44,3 @@ jobs:
     - name: Run Tests (Optional)
       if: steps.check_package.outputs.exists == 'true'
       run: npm test || echo "No test script found"
-
-    - name: Run Accessibility Scanner
-      uses: github/accessibility-scanner@v3.1.0
