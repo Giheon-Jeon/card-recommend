@@ -98,3 +98,16 @@ npm run dev
   ```bash
   npm run validate:cards
   ```
+
+---
+
+## 🔄 카드 카탈로그 자동 수집
+`scripts/fetchCardCatalog.ts`는 카드고릴라(card-gorilla.com) 상세 페이지에 SEO용으로 정적 렌더링되는 `application/ld+json`을 읽어 카드명 / 카드사 / 연회비 / 이미지 URL / 혜택 요약을 `data/catalog/cards-catalog.json`에 모아줍니다. 전월실적 구간별 상세 혜택(`tiers`)은 이 스크립트로 수집되지 않으므로, 카탈로그를 참고해 `data/cards/*.json`에 직접 구조화해서 채워 넣어야 합니다.
+
+```bash
+npm run fetch:catalog                 # 전체 카드 수집
+npm run fetch:catalog -- --limit=50   # 개수 제한 (테스트용)
+```
+
+* 사이트맵(`sitemap-cards.xml`)에서 카드 ID 목록을 가져온 뒤, 요청 간 0.3초 간격을 두고 순회합니다.
+* 카드고릴라 이용약관에 크롤링 제한 조항이 있는지 정기적으로 직접 확인하고, 과도한 요청은 피해주세요.
