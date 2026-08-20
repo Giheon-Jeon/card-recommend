@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { CatalogEntry } from "@/types/catalog";
-import { catalogCards, catalogIssuers, catalogTypes } from "@/lib/loadCatalog";
+import { catalogCards, catalogIssuers, catalogTypes, isInfoInsufficient } from "@/lib/loadCatalog";
 import { CatalogCardTile } from "@/components/catalog/CatalogCardTile";
 import { CardDetailModal } from "@/components/catalog/CardDetailModal";
 
@@ -10,6 +10,7 @@ export function CatalogGallery() {
   const [query, setQuery] = useState("");
   const [issuer, setIssuer] = useState<string>("");
   const [type, setType] = useState<string>("");
+  const [hideInsufficient, setHideInsufficient] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
 
@@ -18,10 +19,11 @@ export function CatalogGallery() {
     return catalogCards.filter((c) => {
       if (issuer && c.issuer !== issuer) return false;
       if (type && c.category !== type) return false;
+      if (hideInsufficient && isInfoInsufficient(c)) return false;
       if (q && !c.name.toLowerCase().includes(q) && !c.issuer.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [query, issuer, type]);
+  }, [query, issuer, type, hideInsufficient]);
 
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
@@ -83,10 +85,34 @@ export function CatalogGallery() {
             </option>
           ))}
         </select>
+
+        <button
+          type="button"
+          onClick={() => {
+            setHideInsufficient((v) => !v);
+            resetPaging();
+          }}
+          aria-pressed={hideInsufficient}
+          className={`flex items-center gap-1.5 rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
+            hideInsufficient
+              ? "border-indigo-500 bg-indigo-600 text-white"
+              : "border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
+          }`}
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4.5h18M6 4.5v15a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5v-15M9 8v8M15 8v8" />
+          </svg>
+          정보 부족 카드 제외
+        </button>
       </div>
 
       <p className="text-sm text-slate-500">
         총 <span className="font-semibold text-slate-800">{filtered.length.toLocaleString()}</span>개 카드
+        {hideInsufficient && (
+          <span className="ml-1 text-xs text-slate-400">
+            (연회비·혜택 정보가 없는 카드는 제외됨)
+          </span>
+        )}
       </p>
 
       {filtered.length === 0 ? (
