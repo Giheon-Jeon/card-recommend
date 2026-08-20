@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "validate:cards": "tsx scripts/validateCardData.ts"
+    "validate:cards": "tsx scripts/validateCardData.ts",
+    "fetch:catalog": "tsx scripts/fetchCardCatalog.ts"
   },
   "dependencies": {
     "react": "^19.2.8",
