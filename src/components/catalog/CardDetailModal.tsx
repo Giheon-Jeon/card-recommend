@@ -5,9 +5,11 @@ import { formatWon } from "@/lib/format";
 interface CardDetailModalProps {
   entry: CatalogEntry | null;
   onClose: () => void;
+  inMyCards: boolean;
+  onToggleMyCards: (entry: CatalogEntry) => void;
 }
 
-export function CardDetailModal({ entry, onClose }: CardDetailModalProps) {
+export function CardDetailModal({ entry, onClose, inMyCards, onToggleMyCards }: CardDetailModalProps) {
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
@@ -94,14 +96,27 @@ export function CardDetailModal({ entry, onClose }: CardDetailModalProps) {
             </div>
           )}
 
-          <a
-            href={entry.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-1 inline-flex items-center justify-center gap-1 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
-          >
-            카드고릴라에서 상세보기 ↗
-          </a>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => onToggleMyCards(entry)}
+              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+                inMyCards
+                  ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
+                  : "bg-indigo-600 text-white hover:bg-indigo-700"
+              }`}
+            >
+              {inMyCards ? "내 카드에서 제거" : "내 카드에 추가"}
+            </button>
+            <a
+              href={entry.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600"
+            >
+              상세보기 ↗
+            </a>
+          </div>
         </div>
       </div>
     </div>

@@ -5,9 +5,11 @@ import { formatWon } from "@/lib/format";
 interface CatalogCardTileProps {
   entry: CatalogEntry;
   onSelect: (entry: CatalogEntry) => void;
+  inMyCards: boolean;
+  onToggleMyCards: (entry: CatalogEntry) => void;
 }
 
-export function CatalogCardTile({ entry, onSelect }: CatalogCardTileProps) {
+export function CatalogCardTile({ entry, onSelect, inMyCards, onToggleMyCards }: CatalogCardTileProps) {
   const [imgError, setImgError] = useState(false);
   const showImage = entry.imageUrl && !imgError;
 
@@ -18,6 +20,38 @@ export function CatalogCardTile({ entry, onSelect }: CatalogCardTileProps) {
       className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
     >
       <div className="relative flex aspect-[1.586/1] items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-5">
+        <span
+          role="button"
+          tabIndex={0}
+          aria-pressed={inMyCards}
+          aria-label={inMyCards ? "내 카드에서 제거" : "내 카드에 추가"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleMyCards(entry);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleMyCards(entry);
+            }
+          }}
+          className={`absolute right-3 top-3 z-10 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full shadow-sm backdrop-blur transition ${
+            inMyCards
+              ? "bg-indigo-600 text-white"
+              : "bg-white/90 text-slate-400 hover:text-indigo-600"
+          }`}
+        >
+          {inMyCards ? (
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 3.5c-2-2.5-6-1.8-6 2 0 3 3.5 5.7 6 8 2.5-2.3 6-5 6-8 0-3.8-4-4.5-6-2Z" />
+            </svg>
+          ) : (
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m-7-7h14" />
+            </svg>
+          )}
+        </span>
         {showImage ? (
           <img
             src={entry.imageUrl}

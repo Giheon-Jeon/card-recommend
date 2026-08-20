@@ -1,12 +1,17 @@
 import { useMemo, useState } from "react";
 import type { CatalogEntry } from "@/types/catalog";
 import { catalogCards, catalogIssuers, catalogTypes, isInfoInsufficient } from "@/lib/loadCatalog";
+import type { useMyCards } from "@/lib/myCards";
 import { CatalogCardTile } from "@/components/catalog/CatalogCardTile";
 import { CardDetailModal } from "@/components/catalog/CardDetailModal";
 
 const PAGE_SIZE = 24;
 
-export function CatalogGallery() {
+interface CatalogGalleryProps {
+  myCards: ReturnType<typeof useMyCards>;
+}
+
+export function CatalogGallery({ myCards }: CatalogGalleryProps) {
   const [query, setQuery] = useState("");
   const [issuer, setIssuer] = useState<string>("");
   const [type, setType] = useState<string>("");
@@ -124,7 +129,13 @@ export function CatalogGallery() {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {visible.map((entry) => (
-              <CatalogCardTile key={entry.sourceId} entry={entry} onSelect={setSelected} />
+              <CatalogCardTile
+                key={entry.sourceId}
+                entry={entry}
+                onSelect={setSelected}
+                inMyCards={myCards.has(entry.sourceId)}
+                onToggleMyCards={(e) => myCards.toggle(e.sourceId)}
+              />
             ))}
           </div>
 
@@ -140,7 +151,12 @@ export function CatalogGallery() {
         </>
       )}
 
-      <CardDetailModal entry={selected} onClose={() => setSelected(null)} />
+      <CardDetailModal
+        entry={selected}
+        onClose={() => setSelected(null)}
+        inMyCards={selected ? myCards.has(selected.sourceId) : false}
+        onToggleMyCards={(e) => myCards.toggle(e.sourceId)}
+      />
     </section>
   );
 }
