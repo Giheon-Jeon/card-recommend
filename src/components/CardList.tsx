@@ -1,14 +1,37 @@
 import { formatWon } from "@/lib/format";
+import type { CardType } from "@/types/card";
 import type { CardEvaluation } from "@/types/recommendation";
 
 interface CardListProps {
   evaluations: CardEvaluation[];
+  cardTypes: CardType[];
+  onToggleCardType: (type: CardType) => void;
 }
 
-export function CardList({ evaluations }: CardListProps) {
+const CARD_TYPE_LABEL: Record<CardType, string> = {
+  credit: "신용카드",
+  check: "체크카드",
+};
+
+export function CardList({ evaluations, cardTypes, onToggleCardType }: CardListProps) {
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold text-slate-900">보유 카드 비교</h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-slate-900">보유 카드 비교</h2>
+        <div className="flex gap-4">
+          {(Object.keys(CARD_TYPE_LABEL) as CardType[]).map((type) => (
+            <label key={type} className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cardTypes.includes(type)}
+                onChange={() => onToggleCardType(type)}
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+              />
+              {CARD_TYPE_LABEL[type]}
+            </label>
+          ))}
+        </div>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
@@ -21,6 +44,13 @@ export function CardList({ evaluations }: CardListProps) {
             </tr>
           </thead>
           <tbody>
+            {evaluations.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-sm text-slate-400">
+                  선택한 카드 유형에 해당하는 카드가 없습니다.
+                </td>
+              </tr>
+            )}
             {evaluations.map((evaluation, i) => (
               <tr
                 key={evaluation.card.id}
@@ -36,7 +66,12 @@ export function CardList({ evaluations }: CardListProps) {
                       </span>
                     )}
                     <div>
-                      <div className="font-medium text-slate-900">{evaluation.card.name}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium text-slate-900">{evaluation.card.name}</div>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                          {CARD_TYPE_LABEL[evaluation.card.cardType]}
+                        </span>
+                      </div>
                       <div className="text-xs text-slate-500">{evaluation.card.issuer}</div>
                     </div>
                   </div>

@@ -2,12 +2,14 @@ import { useMemo, useState } from "react";
 import { cards, categories } from "@/lib/loadCards";
 import { rankCards, bestCardPerCategory } from "@/lib/recommender";
 import { useMyCards } from "@/lib/myCards";
-import type { SpendingProfile } from "@/types/card";
+import type { CardType, SpendingProfile } from "@/types/card";
 import { SpendingSimulator } from "@/components/SpendingSimulator";
 import { CardList } from "@/components/CardList";
 import { RecommendationResult } from "@/components/RecommendationResult";
 import { CatalogGallery } from "@/components/catalog/CatalogGallery";
 import { MyCardsPage } from "@/components/catalog/MyCardsPage";
+import { SpendingImporter } from "@/components/SpendingImporter";
+import type { ParsedSpendingItem } from "@/lib/importerParser";
 
 function initialSpending(): SpendingProfile {
   return categories.reduce<SpendingProfile>((acc, category) => {
@@ -16,6 +18,7 @@ function initialSpending(): SpendingProfile {
   }, {});
 }
 
+const ALL_CARD_TYPES: CardType[] = ["credit", "check"];
 type Tab = "gallery" | "myCards" | "simulator";
 
 const TABS: { id: Tab; label: string; description: string }[] = [
@@ -27,16 +30,42 @@ const TABS: { id: Tab; label: string; description: string }[] = [
 function App() {
   const [tab, setTab] = useState<Tab>("gallery");
   const [spending, setSpending] = useState<SpendingProfile>(initialSpending);
+  const [cardTypes, setCardTypes] = useState<CardType[]>(ALL_CARD_TYPES);
   const myCards = useMyCards();
 
   const handleChange = (categoryId: string, value: number) => {
     setSpending((prev) => ({ ...prev, [categoryId]: value }));
   };
 
-  const ranked = useMemo(() => rankCards(cards, spending), [spending]);
+  const handleImport = (items: ParsedSpendingItem[], mode: "merge" | "overwrite") => {
+    setSpending((prev) => {
+      const next = mode === "overwrite" ? initialSpending() : { ...prev };
+      items.forEach((item) => {
+        if (next[item.category] !== undefined) {
+          next[item.category] += item.amount;
+        } else {
+          next["etc"] = (next["etc"] || 0) + item.amount;
+        }
+      });
+      return next;
+    });
+  };
+
+  const toggleCardType = (type: CardType) => {
+    setCardTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+    );
+  };
+
+  const filteredCards = useMemo(
+    () => cards.filter((card) => cardTypes.includes(card.cardType)),
+    [cardTypes],
+  );
+
+  const ranked = useMemo(() => rankCards(filteredCards, spending), [filteredCards, spending]);
   const categoryWinners = useMemo(
-    () => bestCardPerCategory(cards, spending, categories.map((c) => c.id)),
-    [spending],
+    () => bestCardPerCategory(filteredCards, spending, categories.map((c) => c.id)),
+    [filteredCards, spending],
   );
 
   return (
@@ -95,9 +124,10 @@ function App() {
               현재는 예시 카드 데이터로 동작합니다. 갤러리에서 담은 &quot;내 카드&quot;와는 아직
               연동되지 않아요.
             </div>
+            <SpendingImporter categories={categories} onImport={handleImport} />
             <SpendingSimulator categories={categories} spending={spending} onChange={handleChange} />
             <RecommendationResult ranked={ranked} categoryWinners={categoryWinners} categories={categories} />
-            <CardList evaluations={ranked} />
+            <CardList evaluations={ranked} cardTypes={cardTypes} onToggleCardType={toggleCardType} />
           </div>
         )}
       </main>

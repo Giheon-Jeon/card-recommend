@@ -13,6 +13,8 @@
     "fetch:catalog": "tsx scripts/fetchCardCatalog.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "lucide-react": "^1.33.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
