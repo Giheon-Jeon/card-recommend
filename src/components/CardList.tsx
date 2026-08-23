@@ -15,17 +15,17 @@ const CARD_TYPE_LABEL: Record<CardType, string> = {
 
 export function CardList({ evaluations, cardTypes, onToggleCardType }: CardListProps) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5">
+    <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-slate-900">보유 카드 비교</h2>
         <div className="flex gap-4">
           {(Object.keys(CARD_TYPE_LABEL) as CardType[]).map((type) => (
-            <label key={type} className="flex items-center gap-1.5 text-sm text-slate-700">
+            <label key={type} className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
               <input
                 type="checkbox"
                 checked={cardTypes.includes(type)}
                 onChange={() => onToggleCardType(type)}
-                className="h-4 w-4 rounded border-slate-300"
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600"
               />
               {CARD_TYPE_LABEL[type]}
             </label>
@@ -35,12 +35,12 @@ export function CardList({ evaluations, cardTypes, onToggleCardType }: CardListP
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-slate-500">
-              <th className="py-2 pr-4">카드</th>
-              <th className="py-2 pr-4">연회비</th>
-              <th className="py-2 pr-4">실적 충족</th>
-              <th className="py-2 pr-4">월 혜택액</th>
-              <th className="py-2 pr-4">순혜택(연회비 반영)</th>
+            <tr className="border-b border-slate-200 text-slate-400">
+              <th className="py-2 pr-4 font-medium">카드</th>
+              <th className="py-2 pr-4 font-medium">연회비</th>
+              <th className="py-2 pr-4 font-medium">실적 충족</th>
+              <th className="py-2 pr-4 font-medium">월 혜택액</th>
+              <th className="py-2 pr-4 font-medium">순혜택(연회비 반영)</th>
             </tr>
           </thead>
           <tbody>
@@ -51,31 +51,45 @@ export function CardList({ evaluations, cardTypes, onToggleCardType }: CardListP
                 </td>
               </tr>
             )}
-            {evaluations.map((evaluation) => (
-              <tr key={evaluation.card.id} className="border-b border-slate-100">
-                <td className="py-2 pr-4">
+            {evaluations.map((evaluation, i) => (
+              <tr
+                key={evaluation.card.id}
+                className={`border-b border-slate-100 transition hover:bg-indigo-50/40 ${
+                  i === 0 && evaluation.meetsMinimum ? "bg-indigo-50/60" : ""
+                }`}
+              >
+                <td className="py-3 pr-4">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-900">{evaluation.card.name}</span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                      {CARD_TYPE_LABEL[evaluation.card.cardType]}
-                    </span>
+                    {i === 0 && evaluation.meetsMinimum && (
+                      <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                        BEST
+                      </span>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium text-slate-900">{evaluation.card.name}</div>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                          {CARD_TYPE_LABEL[evaluation.card.cardType]}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500">{evaluation.card.issuer}</div>
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500">{evaluation.card.issuer}</div>
                 </td>
-                <td className="py-2 pr-4">{formatWon(evaluation.card.annualFee)}</td>
-                <td className="py-2 pr-4">
+                <td className="py-3 pr-4 text-slate-600">{formatWon(evaluation.card.annualFee)}</td>
+                <td className="py-3 pr-4">
                   {evaluation.meetsMinimum ? (
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                       충족
                     </span>
                   ) : (
-                    <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs text-rose-700">
+                    <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
                       미충족
                     </span>
                   )}
                 </td>
-                <td className="py-2 pr-4">{formatWon(evaluation.totalMonthlyBenefit)}</td>
-                <td className="py-2 pr-4 font-medium text-slate-900">
+                <td className="py-3 pr-4 text-slate-600">{formatWon(evaluation.totalMonthlyBenefit)}</td>
+                <td className="py-3 pr-4 font-semibold text-slate-900">
                   {formatWon(evaluation.netMonthlyBenefit)}
                 </td>
               </tr>
