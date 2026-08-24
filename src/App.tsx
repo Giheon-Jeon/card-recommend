@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { cards, categories } from "@/lib/loadCards";
+import { categories } from "@/lib/loadCards";
 import { rankCards, bestCardPerCategory } from "@/lib/recommender";
 import { useMyCards } from "@/lib/myCards";
 import type { CardType, SpendingProfile } from "@/types/card";
@@ -10,6 +10,8 @@ import { CatalogGallery } from "@/components/catalog/CatalogGallery";
 import { MyCardsPage } from "@/components/catalog/MyCardsPage";
 import { SpendingImporter } from "@/components/SpendingImporter";
 import type { ParsedSpendingItem } from "@/lib/importerParser";
+import { catalogCards } from "@/lib/loadCatalog";
+import { catalogEntryToCard } from "@/lib/cardConverter";
 
 function initialSpending(): SpendingProfile {
   return categories.reduce<SpendingProfile>((acc, category) => {
@@ -57,9 +59,18 @@ function App() {
     );
   };
 
+  const myCardEntries = useMemo(() => {
+    const idSet = new Set(myCards.ids);
+    return catalogCards.filter((c) => idSet.has(c.sourceId));
+  }, [myCards.ids]);
+
+  const myCardObjects = useMemo(() => {
+    return myCardEntries.map(catalogEntryToCard);
+  }, [myCardEntries]);
+
   const filteredCards = useMemo(
-    () => cards.filter((card) => cardTypes.includes(card.cardType)),
-    [cardTypes],
+    () => myCardObjects.filter((card) => cardTypes.includes(card.cardType)),
+    [myCardObjects, cardTypes],
   );
 
   const ranked = useMemo(() => rankCards(filteredCards, spending), [filteredCards, spending]);
@@ -119,15 +130,36 @@ function App() {
         {tab === "myCards" && <MyCardsPage myCards={myCards} />}
         {tab === "simulator" && (
           <div className="flex flex-col gap-6">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              혜택 시뮬레이터는 전월실적 구간별 혜택율까지 등록된 카드에서만 정밀 계산이 가능해
-              현재는 예시 카드 데이터로 동작합니다. 갤러리에서 담은 &quot;내 카드&quot;와는 아직
-              연동되지 않아요.
-            </div>
-            <SpendingImporter categories={categories} onImport={handleImport} />
-            <SpendingSimulator categories={categories} spending={spending} onChange={handleChange} />
-            <RecommendationResult ranked={ranked} categoryWinners={categoryWinners} categories={categories} />
-            <CardList evaluations={ranked} cardTypes={cardTypes} onToggleCardType={toggleCardType} />
+            {myCards.ids.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center shadow-sm">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-3xl">
+                  💳
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">시뮬레이션할 카드가 없습니다</h3>
+                  <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-slate-400">
+                    카드 갤러리 탭에서 분석 및 비교하고 싶은 카드를 먼저 담은 후 시뮬레이터를 이용할 수 있습니다.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTab("gallery")}
+                  className="mt-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition"
+                >
+                  카드 갤러리로 이동하기
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 text-sm text-indigo-800">
+                  ✨ 내가 담은 <strong>{myCards.ids.length}개 카드</strong>의 혜택 정보가 시뮬레이션용으로 분석/반영되었습니다.
+                </div>
+                <SpendingImporter categories={categories} onImport={handleImport} />
+                <SpendingSimulator categories={categories} spending={spending} onChange={handleChange} />
+                <RecommendationResult ranked={ranked} categoryWinners={categoryWinners} categories={categories} />
+                <CardList evaluations={ranked} cardTypes={cardTypes} onToggleCardType={toggleCardType} />
+              </>
+            )}
           </div>
         )}
       </main>
