@@ -7,7 +7,7 @@ export interface ParsedSpendingItem {
 }
 
 // 한국어 지출 카테고리 매핑 규칙
-const KEYWORD_MAP: { [category: string]: string[] } = {
+export const KEYWORD_MAP: { [category: string]: string[] } = {
   cafe: ["스타벅스", "스벅", "투썸", "이디야", "커피", "메가커피", "빽다방", "폴바셋", "할리스", "카페", "디저트", "베이커리", "빵집", "설빙"],
   convenience: ["GS25", "CU", "세븐일레븐", "이마트24", "미니스톱", "편의점"],
   transport: ["택시", "버스", "지하철", "철도", "코레일", "SRT", "KTX", "티머니", "캐시비", "카카오T", "카카오택시", "타다", "대중교통"],
