@@ -1,19 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { 
-  Upload, 
-  FileText, 
-  Settings, 
-  Key, 
-  Check, 
-  AlertCircle, 
-  Trash2, 
-  ArrowRight,
-  HelpCircle,
-  Zap,
-  RefreshCw
-} from "lucide-react";
+import { Upload, FileText, AlertCircle, ArrowRight, HelpCircle, Zap, RefreshCw } from "lucide-react";
 import { parseTextLocally, parseWithGemini, type ParsedSpendingItem } from "@/lib/importerParser";
 import type { Category } from "@/types/card";
+import { ApiKeySettings } from "@/components/ApiKeySettings";
+import { ParsedItemsTable } from "@/components/ParsedItemsTable";
 
 interface SpendingImporterProps {
   categories: Category[];
@@ -22,20 +12,23 @@ interface SpendingImporterProps {
 
 type TabType = "text" | "image" | "demo";
 
+function toErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
 export function SpendingImporter({ categories, onImport }: SpendingImporterProps) {
   const [activeTab, setActiveTab] = useState<TabType>("demo");
   const [textInput, setTextInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState("");
-  const [showKeyInput, setShowKeyInput] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  
+
   // 파싱된 지출 내역 임시 보관
   const [parsedItems, setParsedItems] = useState<ParsedSpendingItem[]>([]);
   const [importMode, setImportMode] = useState<"merge" | "overwrite">("merge");
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -49,13 +42,11 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
 
   const handleSaveApiKey = () => {
     localStorage.setItem("gemini_api_key", apiKey.trim());
-    setShowKeyInput(false);
   };
 
   const handleRemoveApiKey = () => {
     localStorage.removeItem("gemini_api_key");
     setApiKey("");
-    setShowKeyInput(false);
   };
 
   // 이미지 드래그앤드롭 핸들러
@@ -104,19 +95,20 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
   };
 
   // 파싱 결과 개별 수정/삭제 핸들러
-  const handleUpdateItem = (index: number, field: keyof ParsedSpendingItem, value: any) => {
-    setParsedItems(prev => {
+  const handleUpdateItem = <K extends keyof ParsedSpendingItem>(
+    index: number,
+    field: K,
+    value: ParsedSpendingItem[K],
+  ) => {
+    setParsedItems((prev) => {
       const copy = [...prev];
-      copy[index] = {
-        ...copy[index],
-        [field]: field === "amount" ? (Number(value) || 0) : value
-      };
+      copy[index] = { ...copy[index], [field]: value };
       return copy;
     });
   };
 
   const handleDeleteItem = (index: number) => {
-    setParsedItems(prev => prev.filter((_, i) => i !== index));
+    setParsedItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   // 텍스트 분석 실행
@@ -144,8 +136,8 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
           setParsedItems(result);
         }
       }
-    } catch (err: any) {
-      setAnalysisError(err.message || "텍스트 분석 중 에러가 발생했습니다.");
+    } catch (err) {
+      setAnalysisError(toErrorMessage(err, "텍스트 분석 중 에러가 발생했습니다."));
     } finally {
       setIsAnalyzing(false);
     }
@@ -174,14 +166,14 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
       } else {
         setParsedItems(result);
       }
-    } catch (err: any) {
-      setAnalysisError(err.message || "이미지 분석 중 에러가 발생했습니다.");
+    } catch (err) {
+      setAnalysisError(toErrorMessage(err, "이미지 분석 중 에러가 발생했습니다."));
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  // 데모 실행
+  // 데모 실행 (API Key 없이 기능을 체험할 수 있도록 미리 준비된 결과를 흉내낸 딜레이 후 표시)
   const handleRunDemo = (demoType: "cafe" | "convenience" | "text") => {
     setIsAnalyzing(true);
     setAnalysisError(null);
@@ -193,14 +185,14 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
         setParsedItems([
           { merchant: "소담 커피", amount: 4500, category: "cafe" },
           { merchant: "소담 커피(라떼)", amount: 5000, category: "cafe" },
-          { merchant: "소담 커피(케이크)", amount: 6500, category: "cafe" }
+          { merchant: "소담 커피(케이크)", amount: 6500, category: "cafe" },
         ]);
       } else if (demoType === "convenience") {
         setParsedItems([
           { merchant: "GS25 강남역점(삼각김밥)", amount: 1200, category: "convenience" },
           { merchant: "GS25 강남역점(우유)", amount: 1700, category: "convenience" },
           { merchant: "GS25 강남역점(라면)", amount: 1500, category: "convenience" },
-          { merchant: "GS25 강남역점(샌드위치)", amount: 2500, category: "convenience" }
+          { merchant: "GS25 강남역점(샌드위치)", amount: 2500, category: "convenience" },
         ]);
       } else {
         // 복합 텍스트 데모
@@ -208,7 +200,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
           { merchant: "스타벅스", amount: 12000, category: "cafe" },
           { merchant: "배달의민족(엽기떡볶이)", amount: 24000, category: "dining" },
           { merchant: "지하철 대중교통", amount: 55000, category: "transport" },
-          { merchant: "쿠팡 결제", amount: 42900, category: "onlineShopping" }
+          { merchant: "쿠팡 결제", amount: 42900, category: "onlineShopping" },
         ]);
       }
     }, 1200); // 1.2초 모의 딜레이
@@ -238,58 +230,12 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
           </p>
         </div>
 
-        {/* API Key settings button */}
-        <div className="relative">
-          <button
-            onClick={() => setShowKeyInput(!showKeyInput)}
-            className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold border transition-all duration-250 ${
-              apiKey.trim() 
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" 
-                : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            <Settings className={`h-3.5 w-3.5 ${apiKey.trim() ? "text-emerald-600" : "text-slate-500"}`} />
-            {apiKey.trim() ? "Gemini AI 활성화됨" : "Gemini API 설정"}
-          </button>
-
-          {showKeyInput && (
-            <div className="absolute right-0 top-11 z-20 w-80 rounded-2xl border border-slate-200 bg-white p-5 shadow-xl transition-all duration-300">
-              <h4 className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
-                <Key className="h-4 w-4 text-indigo-500" />
-                Gemini API Key 설정
-              </h4>
-              <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                무료 혹은 유료 Gemini API Key를 등록하면 영수증 이미지 분석 및 문맥 기반 AI 카테고리 매핑이 완전 로컬 환경에서 안전하게 동작합니다. (저장위치: LocalStorage)
-              </p>
-              
-              <div className="mt-3.5 flex flex-col gap-2">
-                <input
-                  type="password"
-                  placeholder="AIzaSy..."
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono focus:border-indigo-500 focus:outline-none"
-                />
-                <div className="flex justify-end gap-2">
-                  {apiKey.trim() && (
-                    <button
-                      onClick={handleRemoveApiKey}
-                      className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
-                    >
-                      삭제
-                    </button>
-                  )}
-                  <button
-                    onClick={handleSaveApiKey}
-                    className="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
-                  >
-                    저장
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <ApiKeySettings
+          apiKey={apiKey}
+          onChange={setApiKey}
+          onSave={handleSaveApiKey}
+          onRemove={handleRemoveApiKey}
+        />
       </div>
 
       {/* Tabs */}
@@ -379,8 +325,8 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
             />
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-slate-400">
-                {apiKey.trim() 
-                  ? "✨ Gemini AI 분석기가 텍스트를 문맥 분석합니다." 
+                {apiKey.trim()
+                  ? "✨ Gemini AI 분석기가 텍스트를 문맥 분석합니다."
                   : "💡 API Key 미등록 시, 기본 키워드 매칭 규칙으로 간단 파싱합니다."}
               </span>
               <button
@@ -414,8 +360,8 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
                 className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all duration-200 ${
-                  isDragOver 
-                    ? "border-indigo-500 bg-indigo-50/20 scale-[0.98]" 
+                  isDragOver
+                    ? "border-indigo-500 bg-indigo-50/20 scale-[0.98]"
                     : "border-slate-300 hover:border-indigo-400 hover:bg-slate-50/50"
                 }`}
               >
@@ -460,9 +406,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
                           AI 분석 중...
                         </>
                       ) : (
-                        <>
-                          영수증 분석 시작
-                        </>
+                        <>영수증 분석 시작</>
                       )}
                     </button>
                   </div>
@@ -500,115 +444,18 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
         </div>
       )}
 
-      {/* Parsing Result Table / Preview Modal */}
+      {/* Parsing Result Table / Preview */}
       {parsedItems.length > 0 && (
-        <div className="mt-6 border-t border-slate-100 pt-5 animate-fadeIn">
-          <div className="mb-3.5 flex justify-between items-center">
-            <h3 className="text-sm font-bold text-slate-800">지출 파싱 결과 미리보기 ({parsedItems.length}건)</h3>
-            <span className="text-xs text-slate-400">데이터를 검토하고 수정한 뒤 시뮬레이터에 적용하세요.</span>
-          </div>
-
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
-              <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                <tr>
-                  <th className="px-4 py-2.5">가맹점(내역)</th>
-                  <th className="px-4 py-2.5 w-32">카테고리</th>
-                  <th className="px-4 py-2.5 w-32">금액</th>
-                  <th className="px-2 py-2.5 text-center w-12">삭제</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {parsedItems.map((item, index) => (
-                  <tr key={index} className="hover:bg-slate-50/50">
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        value={item.merchant}
-                        onChange={(e) => handleUpdateItem(index, "merchant", e.target.value)}
-                        className="w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 font-medium text-slate-800 hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <select
-                        value={item.category}
-                        onChange={(e) => handleUpdateItem(index, "category", e.target.value)}
-                        className="w-full rounded-md border border-transparent bg-transparent px-1 py-1 font-semibold text-slate-700 hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
-                      >
-                        {categories.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        value={item.amount}
-                        step={1000}
-                        onChange={(e) => handleUpdateItem(index, "amount", e.target.value)}
-                        className="w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-right font-bold text-slate-800 hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
-                      />
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      <button
-                        onClick={() => handleDeleteItem(index)}
-                        className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Action layout */}
-          <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl border border-indigo-100 bg-indigo-50/20 p-4 sm:flex-row sm:items-center">
-            {/* Import mode options */}
-            <div className="flex gap-4">
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
-                <input
-                  type="radio"
-                  name="importMode"
-                  checked={importMode === "merge"}
-                  onChange={() => setImportMode("merge")}
-                  className="text-indigo-600 focus:ring-indigo-500"
-                />
-                기존 지출액에 합산 (누적)
-              </label>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
-                <input
-                  type="radio"
-                  name="importMode"
-                  checked={importMode === "overwrite"}
-                  onChange={() => setImportMode("overwrite")}
-                  className="text-indigo-600 focus:ring-indigo-500"
-                />
-                기존 값 덮어쓰기 (교체)
-              </label>
-            </div>
-
-            {/* Apply actions */}
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setParsedItems([])}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleApply}
-                className="flex items-center gap-1 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition-colors"
-              >
-                <Check className="h-4 w-4" />
-                지출 시뮬레이터에 적용
-              </button>
-            </div>
-          </div>
-        </div>
+        <ParsedItemsTable
+          categories={categories}
+          items={parsedItems}
+          onUpdateItem={handleUpdateItem}
+          onDeleteItem={handleDeleteItem}
+          importMode={importMode}
+          onImportModeChange={setImportMode}
+          onCancel={() => setParsedItems([])}
+          onApply={handleApply}
+        />
       )}
     </section>
   );
