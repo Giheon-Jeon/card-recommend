@@ -165,11 +165,11 @@ export async function parseWithGemini(
 ]
 `;
 
-  const prompt = text 
+  const prompt = text
     ? `아래 텍스트 지출 내역을 분석해 주세요:\n\n${text}`
     : "업로드된 영수증/이용내역 이미지 내의 모든 결제 항목을 분석해 주세요.";
 
-  const contents: any[] = [prompt];
+  const contents: (string | { inlineData: { data: string; mimeType: string } })[] = [prompt];
 
   if (imageFile) {
     const imagePart = await fileToGenerativePart(imageFile);
@@ -195,7 +195,7 @@ export async function parseWithGemini(
     const parsed = JSON.parse(jsonStr);
     
     if (Array.isArray(parsed)) {
-      return parsed.map((item: any) => ({
+      return (parsed as Record<string, unknown>[]).map((item) => ({
         merchant: String(item.merchant || "알 수 없음"),
         amount: Number(item.amount) || 0,
         category: String(item.category || "etc"),

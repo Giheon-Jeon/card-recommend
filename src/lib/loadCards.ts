@@ -10,6 +10,9 @@ const cardModules = import.meta.glob("../../data/cards/*.json", { eager: true })
   { default: Card }
 >;
 
+// 전월실적 구간까지 직접 구조화한 수동 카드 데이터입니다. 현재 UI는 카탈로그
+// 기반(loadCatalog.ts + cardConverter.ts)으로 동작하므로 이 값은 화면에 자동 반영되지
+// 않으며, npm run validate:cards로 형식만 검증됩니다.
 export const cards: Card[] = Object.values(cardModules)
   .map((mod) => mod.default)
   .sort((a, b) => a.name.localeCompare(b.name));
