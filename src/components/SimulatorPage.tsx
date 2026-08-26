@@ -154,7 +154,12 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
           <SpendingImporter categories={categories} onImport={handleImport} />
           <SpendingSimulator categories={categories} spending={spending} onChange={handleChange} />
           <RecommendationResult ranked={ranked} categoryWinners={categoryWinners} categories={categories} />
-          <CardList evaluations={rankedForDisplay} cardTypes={cardTypes} onToggleCardType={toggleCardType} />
+          <CardList
+            evaluations={rankedForDisplay}
+            cardTypes={cardTypes}
+            categories={categories}
+            onToggleCardType={toggleCardType}
+          />
         </>
       )}
     </div>
