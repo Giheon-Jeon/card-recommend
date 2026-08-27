@@ -80,4 +80,28 @@ describe("catalogEntryToCard", () => {
     expect(benefits[0].rate).toBeCloseTo(0.007);
     expect(benefits[0].type).toBe("discount");
   });
+
+  it("한 구절에 여러 카테고리 키워드가 포함된 경우 모든 카테고리에 혜택을 부여한다", () => {
+    const entry: CatalogEntry = {
+      sourceId: 104,
+      sourceUrl: "http://example.com/104",
+      name: "다중 카테고리 카드",
+      issuer: "테스트카드사",
+      category: "신용",
+      benefitSummary: "이마트 및 GS25 10% 할인",
+      fetchedAt: new Date().toISOString(),
+    };
+
+    const card = catalogEntryToCard(entry);
+    const benefits = card.tiers[0].benefits;
+    
+    // mart (이마트)와 convenience (GS25) 혜택이 모두 포함되어야 함
+    const martBenefit = benefits.find((b) => b.category === "mart");
+    expect(martBenefit).toBeDefined();
+    expect(martBenefit?.rate).toBeCloseTo(0.1);
+
+    const convenienceBenefit = benefits.find((b) => b.category === "convenience");
+    expect(convenienceBenefit).toBeDefined();
+    expect(convenienceBenefit?.rate).toBeCloseTo(0.1);
+  });
 });

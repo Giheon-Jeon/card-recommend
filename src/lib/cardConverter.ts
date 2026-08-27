@@ -14,27 +14,26 @@ export function catalogEntryToCard(entry: CatalogEntry): Card {
     const clauses = entry.benefitSummary.split(/[,+]/);
 
     for (const clause of clauses) {
-      let matchedCategory: CategoryId | null = null;
+      const matchedCategories: CategoryId[] = [];
 
       // KEYWORD_MAP을 기반으로 매칭되는 카테고리 찾기
       for (const [catId, keywords] of Object.entries(KEYWORD_MAP)) {
         for (const keyword of keywords) {
           if (clause.toLowerCase().includes(keyword.toLowerCase())) {
-            matchedCategory = catId;
+            matchedCategories.push(catId as CategoryId);
             break;
           }
         }
-        if (matchedCategory) break;
       }
 
       // 매칭되지 않았을 때 "모든/전/국내외 가맹점" 키워드가 있다면 etc로 설정
-      if (!matchedCategory) {
+      if (matchedCategories.length === 0) {
         if (clause.includes("가맹점") || clause.includes("전국") || clause.includes("국내외") || clause.includes("모든")) {
-          matchedCategory = "etc";
+          matchedCategories.push("etc");
         }
       }
 
-      if (matchedCategory) {
+      for (const matchedCategory of matchedCategories) {
         // 퍼센트 할인/적립률 파싱 (예: 5%, 0.2~2.0%, 10%)
         const percentMatch = clause.match(/(\d+(?:\.\d+)?)\s*%/);
         let rate = 0;
