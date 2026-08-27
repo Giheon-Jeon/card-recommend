@@ -132,4 +132,23 @@ describe("catalogEntryToCard", () => {
     expect(cafeBenefit).toBeDefined();
     expect(cafeBenefit?.rate).toBeCloseTo(0.2);
   });
+
+  it("다양한 주유 리터당 할인금액(예: 150원/L)을 1,500원 기준으로 정확한 비율(10%)로 파싱한다", () => {
+    const entry: CatalogEntry = {
+      sourceId: 106,
+      sourceUrl: "http://example.com/106",
+      name: "고주유 할인카드",
+      issuer: "테스트카드사",
+      category: "신용",
+      benefitSummary: "S-OIL 리터당 150원 할인",
+      fetchedAt: new Date().toISOString(),
+    };
+
+    const card = catalogEntryToCard(entry);
+    const benefits = card.tiers[0].benefits;
+
+    const gasBenefit = benefits.find((b) => b.category === "gas");
+    expect(gasBenefit).toBeDefined();
+    expect(gasBenefit?.rate).toBeCloseTo(0.1);
+  });
 });

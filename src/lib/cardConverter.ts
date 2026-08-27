@@ -46,9 +46,10 @@ export function catalogEntryToCard(entry: CatalogEntry): Card {
           // 리터당 할인 혹은 금액 정액 할인 파싱
           const wonMatch = clause.match(/(\d+)\s*원/);
           if (wonMatch) {
-            if (clause.includes("/L") || clause.includes("L당")) {
-              // 리터당 60원 할인은 1,500원/L 기준 대략 4%로 매핑
-              rate = 0.04;
+            const wonVal = parseInt(wonMatch[1], 10);
+            if (clause.includes("/L") || clause.includes("L당") || clause.includes("리터당")) {
+              // 리터당 할인은 1,500원/L 기준 동적 할인율로 계산 (예: 60원 -> 4%)
+              rate = wonVal / 1500;
             } else {
               // 일반 정액 할인은 5% 기본값으로 간주
               rate = 0.05;
