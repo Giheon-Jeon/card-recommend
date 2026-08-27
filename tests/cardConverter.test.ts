@@ -151,4 +151,40 @@ describe("catalogEntryToCard", () => {
     expect(gasBenefit).toBeDefined();
     expect(gasBenefit?.rate).toBeCloseTo(0.1);
   });
+
+  it("마일리지 적립 카드(예: 1,500원당 1마일 적립, 1,000원당 2마일 적립)를 etc 카테고리와 정확한 할인율로 파싱한다", () => {
+    const entry1: CatalogEntry = {
+      sourceId: 107,
+      sourceUrl: "http://example.com/107",
+      name: "대한항공 마일리지 카드",
+      issuer: "테스트카드사",
+      category: "신용",
+      benefitSummary: "대한항공 1,500원당 1마일 적립",
+      fetchedAt: new Date().toISOString(),
+    };
+
+    const card1 = catalogEntryToCard(entry1);
+    const benefits1 = card1.tiers[0].benefits;
+    const mileBenefit1 = benefits1.find((b) => b.category === "etc");
+    expect(mileBenefit1).toBeDefined();
+    expect(mileBenefit1?.rate).toBeCloseTo(0.01); // (1 * 15) / 1500 = 1%
+    expect(mileBenefit1?.type).toBe("point");
+
+    const entry2: CatalogEntry = {
+      sourceId: 108,
+      sourceUrl: "http://example.com/108",
+      name: "아시아나 마일리지 카드",
+      issuer: "테스트카드사",
+      category: "신용",
+      benefitSummary: "아시아나 1,000원당 2마일 적립",
+      fetchedAt: new Date().toISOString(),
+    };
+
+    const card2 = catalogEntryToCard(entry2);
+    const benefits2 = card2.tiers[0].benefits;
+    const mileBenefit2 = benefits2.find((b) => b.category === "etc");
+    expect(mileBenefit2).toBeDefined();
+    expect(mileBenefit2?.rate).toBeCloseTo(0.03); // (2 * 15) / 1000 = 3%
+    expect(mileBenefit2?.type).toBe("point");
+  });
 });

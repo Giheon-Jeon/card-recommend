@@ -27,9 +27,15 @@ export function catalogEntryToCard(entry: CatalogEntry): Card {
         }
       }
 
-      // 매칭되지 않았을 때 "모든/전/국내외 가맹점" 키워드가 있다면 etc로 설정
+      // 매칭되지 않았을 때 "모든/전/국내외 가맹점" 키워드가 있거나, 마일리지 혜택인 경우 etc로 설정
       if (matchedCategories.length === 0) {
-        if (clause.includes("가맹점") || clause.includes("전국") || clause.includes("국내외") || clause.includes("모든")) {
+        if (
+          clause.includes("가맹점") ||
+          clause.includes("전국") ||
+          clause.includes("국내외") ||
+          clause.includes("모든") ||
+          clause.includes("마일")
+        ) {
           matchedCategories.push("etc");
         }
       }
@@ -42,6 +48,16 @@ export function catalogEntryToCard(entry: CatalogEntry): Card {
 
         if (percentMatch) {
           rate = parseFloat(percentMatch[1]) / 100;
+        } else if (clause.includes("마일")) {
+          // 마일리지 적립 파싱 (예: 1,500원당 1마일 -> (1 * 15) / 1500 = 1% 적립)
+          const wonMatch = clause.replace(/,/g, "").match(/(\d+)\s*원당/);
+          const mileMatch = clause.match(/(\d+(?:\.\d+)?)\s*마일/);
+          if (wonMatch && mileMatch) {
+            const wonVal = parseFloat(wonMatch[1]);
+            const mileVal = parseFloat(mileMatch[1]);
+            rate = (mileVal * 15) / wonVal;
+            type = "point";
+          }
         } else {
           // 리터당 할인 혹은 금액 정액 할인 파싱
           const wonMatch = clause.match(/(\d+)\s*원/);
