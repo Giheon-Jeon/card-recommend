@@ -39,8 +39,8 @@ jobs:
 
     - name: Check Lint (Optional)
       if: steps.check_package.outputs.exists == 'true'
-      run: npm run lint || echo "No lint script found"
+      run: npm run lint --if-present
       
     - name: Run Tests (Optional)
       if: steps.check_package.outputs.exists == 'true'
-      run: npm test || echo "No test script found"
+      run: npm test --if-present
