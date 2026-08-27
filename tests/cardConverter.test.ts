@@ -104,4 +104,32 @@ describe("catalogEntryToCard", () => {
     expect(convenienceBenefit).toBeDefined();
     expect(convenienceBenefit?.rate).toBeCloseTo(0.1);
   });
+
+  it("명사가 나열된 쉼표와 혜택 구분자 쉼표를 올바르게 구분하여 분할한다", () => {
+    const entry: CatalogEntry = {
+      sourceId: 105,
+      sourceUrl: "http://example.com/105",
+      name: "나열 카드",
+      issuer: "테스트카드사",
+      category: "신용",
+      benefitSummary: "마트,편의점 10% 할인, 스타벅스 20% 적립",
+      fetchedAt: new Date().toISOString(),
+    };
+
+    const card = catalogEntryToCard(entry);
+    const benefits = card.tiers[0].benefits;
+
+    // mart (이마트/마트) 10%, convenience (편의점) 10%, cafe (스타벅스) 20%
+    const martBenefit = benefits.find((b) => b.category === "mart");
+    expect(martBenefit).toBeDefined();
+    expect(martBenefit?.rate).toBeCloseTo(0.1);
+
+    const convenienceBenefit = benefits.find((b) => b.category === "convenience");
+    expect(convenienceBenefit).toBeDefined();
+    expect(convenienceBenefit?.rate).toBeCloseTo(0.1);
+
+    const cafeBenefit = benefits.find((b) => b.category === "cafe");
+    expect(cafeBenefit).toBeDefined();
+    expect(cafeBenefit?.rate).toBeCloseTo(0.2);
+  });
 });

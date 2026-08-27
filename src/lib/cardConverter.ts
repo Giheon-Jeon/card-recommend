@@ -10,8 +10,9 @@ export function catalogEntryToCard(entry: CatalogEntry): Card {
   const benefits: Benefit[] = [];
 
   if (entry.benefitSummary) {
-    // 쉼표 혹은 플러스 기호 단위로 혜택 구분 분석
-    const clauses = entry.benefitSummary.split(/[,+]/);
+    // 혜택 유형 키워드가 끝나는 시점의 쉼표 혹은 플러스 기호로 혜택 구분 분석
+    // Lookbehind를 사용하여 '마트,편의점' 등 명사 나열에 사용된 쉼표에서 분할되는 것을 방지합니다.
+    const clauses = entry.benefitSummary.split(/(?<=(?:할인|적립|캐시백|포인트|마일|원|%|L))\s*[,+]\s*/);
 
     for (const clause of clauses) {
       const matchedCategories: CategoryId[] = [];
