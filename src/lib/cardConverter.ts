@@ -60,15 +60,25 @@ export function catalogEntryToCard(entry: CatalogEntry): Card {
           }
         } else {
           // 리터당 할인 혹은 금액 정액 할인 파싱
-          const wonMatch = clause.match(/(\d+)\s*원/);
+          // 범위 금액 매칭 (예: 200~600원, 5000원 등)
+          const wonMatch = clause.replace(/,/g, "").match(/(\d+)\s*(?:~\s*(\d+))?\s*원/);
           if (wonMatch) {
-            const wonVal = parseInt(wonMatch[1], 10);
+            const minWon = parseInt(wonMatch[1], 10);
+            const maxWon = wonMatch[2] ? parseInt(wonMatch[2], 10) : minWon;
+            const avgWon = (minWon + maxWon) / 2;
+
             if (clause.includes("/L") || clause.includes("L당") || clause.includes("리터당")) {
               // 리터당 할인은 1,500원/L 기준 동적 할인율로 계산 (예: 60원 -> 4%)
-              rate = wonVal / 1500;
+              rate = avgWon / 1500;
             } else {
-              // 일반 정액 할인은 5% 기본값으로 간주
-              rate = 0.05;
+              // 카테고리별 기준 금액 설정
+              let baseAmount = 10000; // 기본 10,000원 기준
+              if (matchedCategory === "transport") {
+                baseAmount = 1500; // 대중교통 기본요금 1,500원 기준
+              } else if (matchedCategory === "mobile") {
+                baseAmount = 50000; // 이동통신 평균요금 50,000원 기준
+              }
+              rate = avgWon / baseAmount;
             }
           }
         }

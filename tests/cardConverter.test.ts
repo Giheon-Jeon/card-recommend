@@ -187,4 +187,40 @@ describe("catalogEntryToCard", () => {
     expect(mileBenefit2?.rate).toBeCloseTo(0.03); // (2 * 15) / 1000 = 3%
     expect(mileBenefit2?.type).toBe("point");
   });
+
+  it("대중교통의 정액 할인 범위(예: 200~600원 할인) 및 이동통신 정액 할인(예: 5,000원 할인)을 동적으로 올바른 할인율로 파싱한다", () => {
+    const entry1: CatalogEntry = {
+      sourceId: 109,
+      sourceUrl: "http://example.com/109",
+      name: "교통 할인카드",
+      issuer: "테스트카드사",
+      category: "신용",
+      benefitSummary: "대중교통 200~600원 할인",
+      fetchedAt: new Date().toISOString(),
+    };
+
+    const card1 = catalogEntryToCard(entry1);
+    const benefits1 = card1.tiers[0].benefits;
+    const transportBenefit = benefits1.find((b) => b.category === "transport");
+    expect(transportBenefit).toBeDefined();
+    // 평균 400원 / 기준 1,500원 = 26.67% 할인
+    expect(transportBenefit?.rate).toBeCloseTo(0.2667);
+
+    const entry2: CatalogEntry = {
+      sourceId: 110,
+      sourceUrl: "http://example.com/110",
+      name: "통신 할인카드",
+      issuer: "테스트카드사",
+      category: "신용",
+      benefitSummary: "이동통신요금 5,000원 할인",
+      fetchedAt: new Date().toISOString(),
+    };
+
+    const card2 = catalogEntryToCard(entry2);
+    const benefits2 = card2.tiers[0].benefits;
+    const mobileBenefit = benefits2.find((b) => b.category === "mobile");
+    expect(mobileBenefit).toBeDefined();
+    // 5,000원 / 기준 50,000원 = 10% 할인
+    expect(mobileBenefit?.rate).toBeCloseTo(0.1);
+  });
 });
