@@ -1,5 +1,9 @@
 import type { CatalogEntry } from "@/types/catalog";
 import catalogJson from "@data/catalog/cards-catalog.json";
+import categoriesJson from "@data/categories.json";
+import type { Category } from "@/types/card";
+
+export const categories: Category[] = categoriesJson as Category[];
 
 const raw = catalogJson as CatalogEntry[];
 
