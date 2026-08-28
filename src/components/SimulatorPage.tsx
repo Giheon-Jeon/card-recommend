@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import { categories } from "@/lib/loadCards";
 import { rankCards, bestCardPerCategory } from "@/lib/recommender";
-import { catalogCards, isInfoInsufficient } from "@/lib/loadCatalog";
+import { catalogCards, isInfoInsufficient, categories } from "@/lib/loadCatalog";
 import { catalogEntryToCard } from "@/lib/cardConverter";
 import type { useMyCards } from "@/lib/myCards";
 import type { CardType, SpendingProfile } from "@/types/card";
