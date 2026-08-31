@@ -4,6 +4,7 @@ import { formatWon } from "@/lib/format";
 import { getCardAdvice, type CardAdviceMap } from "@/lib/cardAdvice";
 import type { Category, CardType } from "@/types/card";
 import type { CardEvaluation } from "@/types/recommendation";
+import { useGeminiApiKey } from "@/contexts/GeminiApiKeyContext";
 
 interface CardListProps {
   evaluations: CardEvaluation[];
@@ -18,6 +19,7 @@ const CARD_TYPE_LABEL: Record<CardType, string> = {
 };
 
 export function CardList({ evaluations, cardTypes, categories, onToggleCardType }: CardListProps) {
+  const { apiKey } = useGeminiApiKey();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [advice, setAdvice] = useState<CardAdviceMap>({});
   const [adviceLoading, setAdviceLoading] = useState(false);
@@ -26,7 +28,6 @@ export function CardList({ evaluations, cardTypes, categories, onToggleCardType 
   const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
 
   const handleGetAdvice = async () => {
-    const apiKey = localStorage.getItem("gemini_api_key")?.trim() ?? "";
     if (!apiKey) {
       setAdviceError("AI 조언을 받으려면 먼저 지출 내역 가져오기 화면에서 Gemini API Key를 등록해 주세요.");
       return;
