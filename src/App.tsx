@@ -3,6 +3,7 @@ import { useMyCards } from "@/lib/myCards";
 import { CatalogGallery } from "@/components/catalog/CatalogGallery";
 import { MyCardsPage } from "@/components/catalog/MyCardsPage";
 import { SimulatorPage } from "@/components/SimulatorPage";
+import { GeminiApiKeyProvider } from "@/contexts/GeminiApiKeyContext";
 
 type Tab = "gallery" | "myCards" | "simulator";
 
@@ -12,7 +13,7 @@ const TABS: { id: Tab; label: string; description: string }[] = [
   { id: "simulator", label: "혜택 시뮬레이터", description: "내 지출로 최적 카드 찾기" },
 ];
 
-function App() {
+function AppContent() {
   const [tab, setTab] = useState<Tab>("gallery");
   const myCards = useMyCards();
 
@@ -73,4 +74,10 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <GeminiApiKeyProvider>
+      <AppContent />
+    </GeminiApiKeyProvider>
+  );
+}
