@@ -4,6 +4,7 @@ import { parseTextLocally, parseWithGemini, type ParsedSpendingItem } from "@/li
 import type { Category } from "@/types/card";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { ParsedItemsTable } from "@/components/ParsedItemsTable";
+import { useGeminiApiKey } from "@/contexts/GeminiApiKeyContext";
 
 interface SpendingImporterProps {
   categories: Category[];
@@ -32,20 +33,19 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // 로컬 스토리지에서 API Key 로드
+  const { apiKey: savedApiKey, saveApiKey, removeApiKey } = useGeminiApiKey();
+
+  // Sync with global key changes
   useEffect(() => {
-    const savedKey = localStorage.getItem("gemini_api_key");
-    if (savedKey) {
-      setApiKey(savedKey);
-    }
-  }, []);
+    setApiKey(savedApiKey);
+  }, [savedApiKey]);
 
   const handleSaveApiKey = () => {
-    localStorage.setItem("gemini_api_key", apiKey.trim());
+    saveApiKey(apiKey.trim());
   };
 
   const handleRemoveApiKey = () => {
-    localStorage.removeItem("gemini_api_key");
+    removeApiKey();
     setApiKey("");
   };
 
