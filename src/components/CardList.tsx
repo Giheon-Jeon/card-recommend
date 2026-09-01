@@ -5,12 +5,26 @@ import { getCardAdvice, type CardAdviceMap } from "@/lib/cardAdvice";
 import type { Category, CardType } from "@/types/card";
 import type { CardEvaluation } from "@/types/recommendation";
 import { useGeminiApiKey } from "@/contexts/GeminiApiKeyContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface CardListProps {
   evaluations: CardEvaluation[];
   cardTypes: CardType[];
   categories: Category[];
   onToggleCardType: (type: CardType) => void;
+}
+
+interface AiAdviceBoxProps {
+  advice: string;
+}
+
+export function AiAdviceBox({ advice }: AiAdviceBoxProps) {
+  return (
+    <div className="mb-3 flex items-start gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-500" />
+      <span>{advice}</span>
+    </div>
+  );
 }
 
 const CARD_TYPE_LABEL: Record<CardType, string> = {
@@ -60,15 +74,21 @@ export function CardList({ evaluations, cardTypes, categories, onToggleCardType 
               {CARD_TYPE_LABEL[type]}
             </label>
           ))}
-          <button
-            type="button"
-            onClick={handleGetAdvice}
-            disabled={adviceLoading || evaluations.length === 0}
-            className="flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+          <ErrorBoundary
+            compact
+            fallbackTitle="AI 조언 오류"
+            fallbackMessage="AI 조언 기능을 불러오는 중 문제가 발생했습니다."
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            {adviceLoading ? "AI 조언 생성 중..." : "AI 조언 받기"}
-          </button>
+            <button
+              type="button"
+              onClick={handleGetAdvice}
+              disabled={adviceLoading || evaluations.length === 0}
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {adviceLoading ? "AI 조언 생성 중..." : "AI 조언 받기"}
+            </button>
+          </ErrorBoundary>
         </div>
       </div>
 
@@ -157,10 +177,13 @@ export function CardList({ evaluations, cardTypes, categories, onToggleCardType 
                     <tr className="border-b border-slate-100 bg-slate-50/60">
                       <td colSpan={6} className="px-4 py-4">
                         {cardAdvice && (
-                          <div className="mb-3 flex items-start gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
-                            <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-500" />
-                            <span>{cardAdvice}</span>
-                          </div>
+                          <ErrorBoundary
+                            compact
+                            fallbackTitle="AI 조언 오류"
+                            fallbackMessage="해당 카드의 AI 조언을 렌더링하는 중 오류가 발생했습니다."
+                          >
+                            <AiAdviceBox advice={cardAdvice} />
+                          </ErrorBoundary>
                         )}
                         {evaluation.breakdown.length === 0 ? (
                           <p className="text-xs text-slate-400">
