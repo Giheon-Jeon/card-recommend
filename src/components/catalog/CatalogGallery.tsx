@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import type { CatalogEntry } from "@/types/catalog";
 import { catalogCards, catalogIssuers, catalogTypes, isInfoInsufficient } from "@/lib/loadCatalog";
 import type { useMyCards } from "@/lib/myCards";
@@ -20,6 +20,8 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
 
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
   const debouncedQuery = useDebounce(query, 250);
 
   const filtered = useMemo(() => {
@@ -37,6 +39,28 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
   const hasMore = visibleCount < filtered.length;
 
   const resetPaging = () => setVisibleCount(PAGE_SIZE);
+
+  useEffect(() => {
+    if (!hasMore || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((v) => Math.min(v + PAGE_SIZE, filtered.length));
+        }
+      },
+      { rootMargin: "300px" },
+    );
+
+    const currentSentinel = sentinelRef.current;
+    if (currentSentinel) {
+      observer.observe(currentSentinel);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, filtered.length]);
 
   return (
     <section className="flex flex-col gap-5">
@@ -158,13 +182,16 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
           </div>
 
           {hasMore && (
-            <button
-              type="button"
-              onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
-              className="mx-auto rounded-lg border border-slate-200 bg-white px-6 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600"
-            >
-              더 보기 ({filtered.length - visibleCount}개 남음)
-            </button>
+            <div className="flex flex-col items-center gap-3 pt-2">
+              <div ref={sentinelRef} className="h-4 w-full" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => setVisibleCount((v) => Math.min(v + PAGE_SIZE, filtered.length))}
+                className="mx-auto rounded-lg border border-slate-200 bg-white px-6 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600"
+              >
+                더 보기 ({filtered.length - visibleCount}개 남음)
+              </button>
+            </div>
           )}
         </>
       )}
@@ -175,6 +202,19 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
         inMyCards={selected ? myCards.has(selected.sourceId) : false}
         onToggleMyCards={(e) => myCards.toggle(e.sourceId)}
       />
+
+      {visibleCount > PAGE_SIZE && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="맨 위로 이동"
+          className="fixed bottom-6 right-6 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          </svg>
+        </button>
+      )}
     </section>
   );
 }
