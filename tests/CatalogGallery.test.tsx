@@ -38,4 +38,39 @@ describe("CatalogGallery Component Smoke Test", () => {
     fireEvent.change(searchInput, { target: { value: "신한" } });
     expect(searchInput.value).toBe("신한");
   });
+
+  it("검색어 입력 시 초기화(X) 버튼이 노출되고 클릭 시 검색어가 초기화되어야 한다", () => {
+    render(<CatalogGallery myCards={mockMyCards} />);
+    const searchInput = screen.getByPlaceholderText("카드 이름 또는 카드사로 검색") as HTMLInputElement;
+
+    // 검색어 입력 전에는 초기화 버튼이 없음
+    expect(screen.queryByRole("button", { name: "검색어 초기화" })).not.toBeInTheDocument();
+
+    // 검색어 입력
+    fireEvent.change(searchInput, { target: { value: "국민" } });
+    const clearButton = screen.getByRole("button", { name: "검색어 초기화" });
+    expect(clearButton).toBeInTheDocument();
+
+    // 초기화 버튼 클릭
+    fireEvent.click(clearButton);
+    expect(searchInput.value).toBe("");
+    expect(screen.queryByRole("button", { name: "검색어 초기화" })).not.toBeInTheDocument();
+  });
+
+  it("더 보기 버튼 클릭 시 추가 카드가 로드되고 맨 위로 이동 버튼이 표시되어야 한다", () => {
+    render(<CatalogGallery myCards={mockMyCards} />);
+
+    // 초기에는 맨 위로 이동 버튼이 없음 (24개 렌더링)
+    expect(screen.queryByRole("button", { name: "맨 위로 이동" })).not.toBeInTheDocument();
+
+    // 더 보기 버튼 확인 및 클릭
+    const loadMoreButton = screen.getByRole("button", { name: /더 보기/ });
+    expect(loadMoreButton).toBeInTheDocument();
+
+    fireEvent.click(loadMoreButton);
+
+    // 더 보기 후 맨 위로 이동 버튼 표시 확인
+    const scrollToTopButton = screen.getByRole("button", { name: "맨 위로 이동" });
+    expect(scrollToTopButton).toBeInTheDocument();
+  });
 });

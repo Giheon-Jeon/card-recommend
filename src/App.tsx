@@ -1,9 +1,23 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useMyCards } from "@/lib/myCards";
 import { CatalogGallery } from "@/components/catalog/CatalogGallery";
-import { MyCardsPage } from "@/components/catalog/MyCardsPage";
-import { SimulatorPage } from "@/components/SimulatorPage";
 import { GeminiApiKeyProvider } from "@/contexts/GeminiApiKeyContext";
+
+const MyCardsPage = lazy(() =>
+  import("@/components/catalog/MyCardsPage").then((m) => ({ default: m.MyCardsPage })),
+);
+const SimulatorPage = lazy(() =>
+  import("@/components/SimulatorPage").then((m) => ({ default: m.SimulatorPage })),
+);
+
+function TabLoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+      <p className="text-sm text-slate-500">페이지를 불러오는 중입니다...</p>
+    </div>
+  );
+}
 
 type Tab = "gallery" | "myCards" | "simulator";
 
@@ -64,11 +78,13 @@ function AppContent() {
       </div>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        {tab === "gallery" && <CatalogGallery myCards={myCards} />}
-        {tab === "myCards" && <MyCardsPage myCards={myCards} />}
-        {tab === "simulator" && (
-          <SimulatorPage myCards={myCards} onGoToGallery={() => setTab("gallery")} />
-        )}
+        <Suspense fallback={<TabLoadingFallback />}>
+          {tab === "gallery" && <CatalogGallery myCards={myCards} />}
+          {tab === "myCards" && <MyCardsPage myCards={myCards} />}
+          {tab === "simulator" && (
+            <SimulatorPage myCards={myCards} onGoToGallery={() => setTab("gallery")} />
+          )}
+        </Suspense>
       </main>
     </div>
   );

@@ -17,6 +17,7 @@ export function CatalogCardTile({ entry, onSelect, inMyCards, onToggleMyCards }:
     <button
       type="button"
       onClick={() => onSelect(entry)}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "320px" }}
       className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
     >
       <div className="relative flex aspect-[1.586/1] items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-5">

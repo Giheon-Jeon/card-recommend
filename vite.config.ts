@@ -15,6 +15,24 @@ export default defineConfig({
       '@data': path.resolve(rootDir, './data'),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('cards-catalog.json')) {
+            return 'cards-catalog'
+          }
+          if (id.includes('@google/generative-ai')) {
+            return 'gemini-ai'
+          }
+          if (id.includes('node_modules')) {
+            return 'vendor'
+          }
+        },
+      },
+    },
+  },
   test: {
     environment: 'happy-dom',
     setupFiles: ['./tests/setup.ts'],
