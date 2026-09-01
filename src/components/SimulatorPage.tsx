@@ -9,6 +9,7 @@ import { SpendingSimulator } from "@/components/SpendingSimulator";
 import { CardList } from "@/components/CardList";
 import { RecommendationResult } from "@/components/RecommendationResult";
 import { SpendingImporter } from "@/components/SpendingImporter";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const ALL_CARD_TYPES: CardType[] = ["credit", "check"];
 /** 카드 비교 테이블에 표시할 "전체 카드" 모드의 최대 행 수 (전체 카탈로그를 다 그리면 느려지므로 상위 N개만 표시) */
@@ -150,7 +151,12 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
               </>
             )}
           </div>
-          <SpendingImporter categories={categories} onImport={handleImport} />
+          <ErrorBoundary
+            fallbackTitle="지출 내역 가져오기 오류"
+            fallbackMessage="지출 내역 가져오기 컴포넌트를 불러오는 중 오류가 발생했습니다. 다시 시도해 주세요."
+          >
+            <SpendingImporter categories={categories} onImport={handleImport} />
+          </ErrorBoundary>
           <SpendingSimulator categories={categories} spending={spending} onChange={handleChange} />
           <RecommendationResult ranked={ranked} categoryWinners={categoryWinners} categories={categories} />
           <CardList
