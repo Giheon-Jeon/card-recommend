@@ -5,6 +5,7 @@ import type { Category } from "@/types/card";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { ParsedItemsTable } from "@/components/ParsedItemsTable";
 import { useGeminiApiKey } from "@/contexts/GeminiApiKeyContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface SpendingImporterProps {
   categories: Category[];
@@ -446,16 +447,22 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
 
       {/* Parsing Result Table / Preview */}
       {parsedItems.length > 0 && (
-        <ParsedItemsTable
-          categories={categories}
-          items={parsedItems}
-          onUpdateItem={handleUpdateItem}
-          onDeleteItem={handleDeleteItem}
-          importMode={importMode}
-          onImportModeChange={setImportMode}
-          onCancel={() => setParsedItems([])}
-          onApply={handleApply}
-        />
+        <ErrorBoundary
+          fallbackTitle="지출 내역 표 오류"
+          fallbackMessage="파싱된 지출 내역 표를 렌더링하는 중 문제가 발생했습니다."
+          onReset={() => setParsedItems([])}
+        >
+          <ParsedItemsTable
+            categories={categories}
+            items={parsedItems}
+            onUpdateItem={handleUpdateItem}
+            onDeleteItem={handleDeleteItem}
+            importMode={importMode}
+            onImportModeChange={setImportMode}
+            onCancel={() => setParsedItems([])}
+            onApply={handleApply}
+          />
+        </ErrorBoundary>
       )}
     </section>
   );
