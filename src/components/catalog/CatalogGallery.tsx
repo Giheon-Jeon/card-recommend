@@ -4,6 +4,7 @@ import { catalogCards, catalogIssuers, catalogTypes, isInfoInsufficient } from "
 import type { useMyCards } from "@/lib/myCards";
 import { CatalogCardTile } from "@/components/catalog/CatalogCardTile";
 import { CardDetailModal } from "@/components/catalog/CardDetailModal";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const PAGE_SIZE = 24;
 
@@ -19,8 +20,10 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
 
+  const debouncedQuery = useDebounce(query, 250);
+
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     return catalogCards.filter((c) => {
       if (issuer && c.issuer !== issuer) return false;
       if (type && c.category !== type) return false;
@@ -28,7 +31,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
       if (q && !c.name.toLowerCase().includes(q) && !c.issuer.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [query, issuer, type, hideInsufficient]);
+  }, [debouncedQuery, issuer, type, hideInsufficient]);
 
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
@@ -55,8 +58,23 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
               resetPaging();
             }}
             placeholder="카드 이름 또는 카드사로 검색"
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-9 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
           />
+          {query && (
+            <button
+              type="button"
+              aria-label="검색어 초기화"
+              onClick={() => {
+                setQuery("");
+                resetPaging();
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
         <select

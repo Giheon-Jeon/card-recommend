@@ -38,4 +38,22 @@ describe("CatalogGallery Component Smoke Test", () => {
     fireEvent.change(searchInput, { target: { value: "신한" } });
     expect(searchInput.value).toBe("신한");
   });
+
+  it("검색어 입력 시 초기화(X) 버튼이 노출되고 클릭 시 검색어가 초기화되어야 한다", () => {
+    render(<CatalogGallery myCards={mockMyCards} />);
+    const searchInput = screen.getByPlaceholderText("카드 이름 또는 카드사로 검색") as HTMLInputElement;
+
+    // 검색어 입력 전에는 초기화 버튼이 없음
+    expect(screen.queryByRole("button", { name: "검색어 초기화" })).not.toBeInTheDocument();
+
+    // 검색어 입력
+    fireEvent.change(searchInput, { target: { value: "국민" } });
+    const clearButton = screen.getByRole("button", { name: "검색어 초기화" });
+    expect(clearButton).toBeInTheDocument();
+
+    // 초기화 버튼 클릭
+    fireEvent.click(clearButton);
+    expect(searchInput.value).toBe("");
+    expect(screen.queryByRole("button", { name: "검색어 초기화" })).not.toBeInTheDocument();
+  });
 });
