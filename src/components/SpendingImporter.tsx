@@ -355,28 +355,33 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
         {activeTab === "image" && (
           <div className="space-y-4">
             {!imagePreview ? (
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all duration-200 ${
-                  isDragOver
-                    ? "border-indigo-500 bg-indigo-50/20 scale-[0.98]"
-                    : "border-slate-300 hover:border-indigo-400 hover:bg-slate-50/50"
-                }`}
-              >
+              <>
                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileSelect}
                   accept="image/*"
+                  aria-label="이미지 파일 선택"
                   className="hidden"
                 />
-                <Upload className="h-8 w-8 text-slate-400 mb-2 group-hover:text-indigo-500" />
-                <p className="text-xs font-bold text-slate-700">영수증 또는 이용 명세서 캡처 업로드</p>
-                <p className="mt-1 text-[10px] text-slate-400">클릭하거나 이미지 파일을 여기로 드래그하세요 (PNG, JPG)</p>
-              </div>
+                <button
+                  type="button"
+                  aria-label="영수증 또는 이용 명세서 캡처 이미지 업로드"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                    isDragOver
+                      ? "border-indigo-500 bg-indigo-50/20 scale-[0.98]"
+                      : "border-slate-300 hover:border-indigo-400 hover:bg-slate-50/50"
+                  }`}
+                >
+                  <Upload className="h-8 w-8 text-slate-400 mb-2 group-hover:text-indigo-500" />
+                  <p className="text-xs font-bold text-slate-700">영수증 또는 이용 명세서 캡처 업로드</p>
+                  <p className="mt-1 text-[10px] text-slate-400">클릭하거나 이미지 파일을 여기로 드래그하세요 (PNG, JPG)</p>
+                </button>
+              </>
             ) : (
               <div className="flex flex-col sm:flex-row gap-4 items-center rounded-xl border border-slate-200 p-3 bg-slate-50/30">
                 <div className="relative h-28 w-24 overflow-hidden rounded-md border border-slate-300 bg-white">
