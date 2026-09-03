@@ -100,12 +100,14 @@ export function CardList({ evaluations, cardTypes, categories, onToggleCardType 
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-slate-400">
-              <th className="py-2 pr-4 font-medium">카드</th>
-              <th className="py-2 pr-4 font-medium">연회비</th>
-              <th className="py-2 pr-4 font-medium">실적 충족</th>
-              <th className="py-2 pr-4 font-medium">월 혜택액</th>
-              <th className="py-2 pr-4 font-medium">순혜택(연회비 반영)</th>
-              <th className="py-2 pr-4 font-medium" />
+              <th scope="col" className="py-2 pr-4 font-medium">카드</th>
+              <th scope="col" className="py-2 pr-4 font-medium">연회비</th>
+              <th scope="col" className="py-2 pr-4 font-medium">실적 충족</th>
+              <th scope="col" className="py-2 pr-4 font-medium">월 혜택액</th>
+              <th scope="col" className="py-2 pr-4 font-medium">순혜택(연회비 반영)</th>
+              <th scope="col" className="py-2 pr-4 font-medium">
+                <span className="sr-only">상세보기</span>
+              </th>
             </tr>
           </thead>
           <tbody>

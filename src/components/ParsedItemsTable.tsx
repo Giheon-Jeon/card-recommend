@@ -53,6 +53,7 @@ export function ParsedItemsTable({
                 <td className="px-4 py-2">
                   <input
                     type="text"
+                    aria-label="가맹점명"
                     value={item.merchant}
                     onChange={(e) => onUpdateItem(index, "merchant", e.target.value)}
                     className="w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 font-medium text-slate-800 hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
@@ -61,6 +62,7 @@ export function ParsedItemsTable({
                 <td className="px-4 py-2">
                   <select
                     value={item.category}
+                    aria-label="카테고리"
                     onChange={(e) => onUpdateItem(index, "category", e.target.value)}
                     className="w-full rounded-md border border-transparent bg-transparent px-1 py-1 font-semibold text-slate-700 hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
                   >
@@ -74,6 +76,7 @@ export function ParsedItemsTable({
                 <td className="px-4 py-2">
                   <input
                     type="number"
+                    aria-label="금액"
                     value={item.amount}
                     step={1000}
                     onChange={(e) => onUpdateItem(index, "amount", Number(e.target.value) || 0)}
@@ -82,6 +85,8 @@ export function ParsedItemsTable({
                 </td>
                 <td className="px-2 py-2 text-center">
                   <button
+                    type="button"
+                    aria-label="항목 삭제"
                     onClick={() => onDeleteItem(index)}
                     className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                   >

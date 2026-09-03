@@ -33,14 +33,19 @@ export function CardDetailModal({ entry, onClose, inMyCards, onToggleMyCards }: 
   const showImage = entry.imageUrl && !imgError;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]"
-      onClick={onClose}
+    <dialog
+      open
+      aria-labelledby="card-modal-title"
+      className="fixed inset-0 z-50 m-0 flex h-full w-full max-h-none max-w-none items-center justify-center border-none bg-transparent p-4 animate-[fadeIn_0.15s_ease-out]"
     >
-      <div
-        className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl animate-[popIn_0.18s_ease-out]"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <button
+        type="button"
+        aria-label="대화상자 닫기"
+        tabIndex={-1}
+        onClick={onClose}
+        className="fixed inset-0 h-full w-full bg-slate-900/50 backdrop-blur-sm -z-10 cursor-default border-none"
+      />
+      <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl animate-[popIn_0.18s_ease-out]">
         <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-6 py-8">
           <button
             type="button"
@@ -67,7 +72,7 @@ export function CardDetailModal({ entry, onClose, inMyCards, onToggleMyCards }: 
         <div className="flex flex-col gap-4 p-6">
           <div>
             <p className="text-sm font-medium text-indigo-600">{entry.issuer || "카드사 미상"}</p>
-            <h2 className="mt-1 text-xl font-bold text-slate-900">{entry.name}</h2>
+            <h2 id="card-modal-title" className="mt-1 text-xl font-bold text-slate-900">{entry.name}</h2>
           </div>
 
           <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-4 text-sm">
@@ -119,6 +124,6 @@ export function CardDetailModal({ entry, onClose, inMyCards, onToggleMyCards }: 
           </div>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
