@@ -1,22 +1,45 @@
 import { useState } from "react";
-import { Settings, Key } from "lucide-react";
+import { Settings, Key, ShieldAlert, CheckCircle2 } from "lucide-react";
+import type { StorageType } from "../contexts/GeminiApiKeyContext";
 
 interface ApiKeySettingsProps {
   apiKey: string;
+  storageType?: StorageType;
   onChange: (value: string) => void;
-  onSave: () => void;
+  onSave: (storageType?: StorageType) => void;
   onRemove: () => void;
+  onStorageTypeChange?: (type: StorageType) => void;
 }
 
 /** 지출 내역 가져오기 화면 우측 상단의 Gemini API Key 등록/해제 버튼과 팝오버. */
-export function ApiKeySettings({ apiKey, onChange, onSave, onRemove }: ApiKeySettingsProps) {
+export function ApiKeySettings({
+  apiKey,
+  storageType = "session",
+  onChange,
+  onSave,
+  onRemove,
+  onStorageTypeChange,
+}: ApiKeySettingsProps) {
   const [showKeyInput, setShowKeyInput] = useState(false);
+  const [currentStorageType, setCurrentStorageType] = useState<StorageType>(storageType);
   const hasKey = apiKey.trim().length > 0;
+
+  const handleStorageChange = (type: StorageType) => {
+    setCurrentStorageType(type);
+    onStorageTypeChange?.(type);
+  };
+
+  const handleSave = () => {
+    onSave(currentStorageType);
+    setShowKeyInput(false);
+  };
 
   return (
     <div className="relative">
       <button
+        type="button"
         onClick={() => setShowKeyInput(!showKeyInput)}
+        aria-expanded={showKeyInput}
         className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold border transition-all duration-250 ${
           hasKey
             ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
@@ -24,48 +47,129 @@ export function ApiKeySettings({ apiKey, onChange, onSave, onRemove }: ApiKeySet
         }`}
       >
         <Settings className={`h-3.5 w-3.5 ${hasKey ? "text-emerald-600" : "text-slate-500"}`} />
-        {hasKey ? "Gemini AI 활성화됨" : "Gemini API 설정"}
+        {hasKey ? `Gemini AI (${currentStorageType === "session" ? "세션" : "로컬"})` : "Gemini API 설정"}
       </button>
 
       {showKeyInput && (
-        <div className="absolute right-0 top-11 z-20 w-80 rounded-2xl border border-slate-200 bg-white p-5 shadow-xl transition-all duration-300">
-          <h4 className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
-            <Key className="h-4 w-4 text-indigo-500" />
-            Gemini API Key 설정
-          </h4>
-          <p className="mt-2 text-xs leading-relaxed text-slate-500">
-            무료 혹은 유료 Gemini API Key를 등록하면 영수증 이미지 분석 및 문맥 기반 AI 카테고리 매핑이 완전 로컬 환경에서 안전하게 동작합니다. (저장위치: LocalStorage)
-          </p>
+        <div
+          aria-label="Gemini API Key 설정"
+          className="absolute right-0 top-11 z-20 w-96 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl transition-all duration-300"
+        >
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h4 className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
+              <Key className="h-4 w-4 text-indigo-500" />
+              Gemini API Key 보안 설정
+            </h4>
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+              클라이언트 전용
+            </span>
+          </div>
 
-          <div className="mt-3.5 flex flex-col gap-2">
-            <input
-              type="password"
-              placeholder="AIzaSy..."
-              value={apiKey}
-              onChange={(e) => onChange(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono focus:border-indigo-500 focus:outline-none"
-            />
-            <div className="flex justify-end gap-2">
-              {hasKey && (
+          {/* 보안 안내 및 위험 경고 배너 */}
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs leading-relaxed text-amber-900">
+            <div className="flex items-start gap-2">
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <div className="space-y-1">
+                <p className="font-semibold text-amber-950">보안 및 키 보관 주의사항</p>
+                <p className="text-[11px] text-amber-800">
+                  API Key는 별도의 백엔드 서버 없이 브라우저 내부에만 저장됩니다. XSS 위험 완화를 위해 공용 기기에서는
+                  반드시 <strong className="underline">세션 보관</strong>을 권장합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3.5 flex flex-col gap-3">
+            <div>
+              <label htmlFor="gemini-api-key-input" className="mb-1 block text-xs font-semibold text-slate-700">
+                API Key 입력
+              </label>
+              <input
+                id="gemini-api-key-input"
+                type="password"
+                placeholder="AIzaSy..."
+                value={apiKey}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+
+            {/* 저장 위치/스코프 선택 */}
+            <fieldset className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+              <legend className="px-1 text-[11px] font-bold text-slate-600">저장 방식 선택</legend>
+              <div className="mt-1 space-y-2">
+                <div className="flex items-start gap-2.5 text-xs">
+                  <input
+                    type="radio"
+                    id="storage-type-session"
+                    name="storageType"
+                    value="session"
+                    checked={currentStorageType === "session"}
+                    onChange={() => handleStorageChange("session")}
+                    className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label htmlFor="storage-type-session" className="cursor-pointer">
+                    <span className="flex items-center gap-1.5 font-semibold text-slate-800">
+                      세션 스토리지 보관
+                      <span className="rounded bg-indigo-100 px-1.5 py-0.2 text-[10px] font-bold text-indigo-700">
+                        권장
+                      </span>
+                    </span>
+                    <span className="block text-[11px] text-slate-500">
+                      브라우저 탭을 닫으면 API 키가 메모리에서 즉시 파기되어 안전합니다.
+                    </span>
+                  </label>
+                </div>
+
+                <div className="flex items-start gap-2.5 text-xs">
+                  <input
+                    type="radio"
+                    id="storage-type-local"
+                    name="storageType"
+                    value="local"
+                    checked={currentStorageType === "local"}
+                    onChange={() => handleStorageChange("local")}
+                    className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label htmlFor="storage-type-local" className="cursor-pointer">
+                    <span className="block font-semibold text-slate-800">로컬 스토리지 보관 (영구 유지)</span>
+                    <span className="block text-[11px] text-slate-500">
+                      브라우저를 닫아도 키가 유지됩니다. 개인 신뢰 기기에서만 사용하세요.
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </fieldset>
+
+            <div className="flex items-center justify-between pt-1">
+              <div className="text-[11px] text-slate-400">
+                {hasKey && (
+                  <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                    <CheckCircle2 className="h-3 w-3" /> 등록됨
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                {hasKey && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRemove();
+                      setShowKeyInput(false);
+                    }}
+                    className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors"
+                  >
+                    삭제
+                  </button>
+                )}
                 <button
-                  onClick={() => {
-                    onRemove();
-                    setShowKeyInput(false);
-                  }}
-                  className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
+                  type="button"
+                  onClick={handleSave}
+                  className="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
                 >
-                  삭제
+                  저장
                 </button>
-              )}
-              <button
-                onClick={() => {
-                  onSave();
-                  setShowKeyInput(false);
-                }}
-                className="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
-              >
-                저장
-              </button>
+              </div>
             </div>
           </div>
         </div>

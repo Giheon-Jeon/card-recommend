@@ -34,15 +34,15 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const { apiKey: savedApiKey, saveApiKey, removeApiKey } = useGeminiApiKey();
+  const { apiKey: savedApiKey, storageType: savedStorageType, saveApiKey, removeApiKey } = useGeminiApiKey();
 
   // Sync with global key changes
   useEffect(() => {
     setApiKey(savedApiKey);
   }, [savedApiKey]);
 
-  const handleSaveApiKey = () => {
-    saveApiKey(apiKey.trim());
+  const handleSaveApiKey = (type?: import("../contexts/GeminiApiKeyContext").StorageType) => {
+    saveApiKey(apiKey.trim(), type);
   };
 
   const handleRemoveApiKey = () => {
@@ -233,6 +233,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
 
         <ApiKeySettings
           apiKey={apiKey}
+          storageType={savedStorageType}
           onChange={setApiKey}
           onSave={handleSaveApiKey}
           onRemove={handleRemoveApiKey}
