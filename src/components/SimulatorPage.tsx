@@ -52,6 +52,10 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
           next["etc"] = (next["etc"] || 0) + item.amount;
         }
       });
+      // 환불/취소 내역으로 인해 지출액이 음수가 되지 않도록 최소 0원 하한 보정
+      Object.keys(next).forEach((key) => {
+        next[key] = Math.max(0, next[key]);
+      });
       return next;
     });
   };
