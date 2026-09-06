@@ -64,4 +64,65 @@ describe("parseTextLocally", () => {
     const result = parseTextLocally(text);
     expect(result).toHaveLength(0);
   });
+
+  describe("결제 취소 및 환불 내역 파싱", () => {
+    it("승인취소 키워드가 포함된 경우 금액을 음수로 파싱한다", () => {
+      const text = "[신한체크취소] 09/04 11:20 스타벅스 5,500원 승인취소";
+      const result = parseTextLocally(text);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        merchant: "스타벅스",
+        amount: -5500,
+        category: "cafe",
+      });
+    });
+
+    it("결제취소 키워드와 인명이 포함된 경우 상호명과 음수 금액을 올바르게 파싱한다", () => {
+      const text = "[KB국민카드] 결제취소 홍길동 15,000원 스타벅스";
+      const result = parseTextLocally(text);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        merchant: "스타벅스",
+        amount: -15000,
+        category: "cafe",
+      });
+    });
+
+    it("마이너스 부호(-)가 포함된 결제 건의 금액을 음수로 변환한다", () => {
+      const text = "[현대카드] 스타벅스 -12,000원 결제취소";
+      const result = parseTextLocally(text);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        merchant: "스타벅스",
+        amount: -12000,
+        category: "cafe",
+      });
+    });
+
+    it("특수 음수 부호(▲)가 포함된 환불 건을 음수로 변환한다", () => {
+      const text = "쿠팡 ▲42,900원 환불";
+      const result = parseTextLocally(text);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        merchant: "쿠팡",
+        amount: -42900,
+        category: "onlineShopping",
+      });
+    });
+
+    it("정상 결제와 결제 취소가 혼합된 멀티라인 텍스트를 각각 올바른 부호로 파싱한다", () => {
+      const text = `
+        [신한체크승인] GS25강남역점 4,500원
+        [신한체크취소] 09/04 11:20 스타벅스 5,500원 승인취소
+        쿠팡 결제 42,900원
+        [롯데카드] 배달의민족 24,000원 환불
+      `;
+      const result = parseTextLocally(text);
+      expect(result).toHaveLength(4);
+      expect(result[0]).toEqual({ merchant: "GS25강남역점", amount: 4500, category: "convenience" });
+      expect(result[1]).toEqual({ merchant: "스타벅스", amount: -5500, category: "cafe" });
+      expect(result[2]).toEqual({ merchant: "쿠팡", amount: 42900, category: "onlineShopping" });
+      expect(result[3]).toEqual({ merchant: "배달의민족", amount: -24000, category: "dining" });
+    });
+  });
 });

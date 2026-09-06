@@ -30,11 +30,17 @@ export function ParsedItemsTable({
   onCancel,
   onApply,
 }: ParsedItemsTableProps) {
+  const hasRefund = items.some((item) => item.amount < 0);
+
   return (
     <div className="mt-6 border-t border-slate-100 pt-5 animate-fadeIn">
-      <div className="mb-3.5 flex justify-between items-center">
+      <div className="mb-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
         <h3 className="text-sm font-bold text-slate-800">지출 파싱 결과 미리보기 ({items.length}건)</h3>
-        <span className="text-xs text-slate-400">데이터를 검토하고 수정한 뒤 시뮬레이터에 적용하세요.</span>
+        <span className="text-xs text-slate-400">
+          {hasRefund
+            ? "💡 환불/취소 내역(음수 금액)은 시뮬레이터 적용 시 지출에서 차감됩니다."
+            : "데이터를 검토하고 수정한 뒤 시뮬레이터에 적용하세요."}
+        </span>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -48,53 +54,65 @@ export function ParsedItemsTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
-            {items.map((item, index) => (
-              <tr key={index} className="hover:bg-slate-50/50">
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    aria-label="가맹점명"
-                    value={item.merchant}
-                    onChange={(e) => onUpdateItem(index, "merchant", e.target.value)}
-                    className="w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 font-medium text-slate-800 hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <select
-                    value={item.category}
-                    aria-label="카테고리"
-                    onChange={(e) => onUpdateItem(index, "category", e.target.value)}
-                    className="w-full rounded-md border border-transparent bg-transparent px-1 py-1 font-semibold text-slate-700 hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="number"
-                    aria-label="금액"
-                    value={item.amount}
-                    step={1000}
-                    onChange={(e) => onUpdateItem(index, "amount", Number(e.target.value) || 0)}
-                    className="w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-right font-bold text-slate-800 hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
-                  />
-                </td>
-                <td className="px-2 py-2 text-center">
-                  <button
-                    type="button"
-                    aria-label="항목 삭제"
-                    onClick={() => onDeleteItem(index)}
-                    className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {items.map((item, index) => {
+              const isRefund = item.amount < 0;
+              return (
+                <tr key={index} className={`hover:bg-slate-50/50 ${isRefund ? "bg-rose-50/20" : ""}`}>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1.5">
+                      {isRefund && (
+                        <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-100 text-rose-700">
+                          환불/취소
+                        </span>
+                      )}
+                      <input
+                        type="text"
+                        aria-label="가맹점명"
+                        value={item.merchant}
+                        onChange={(e) => onUpdateItem(index, "merchant", e.target.value)}
+                        className="w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 font-medium text-slate-800 hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                      />
+                    </div>
+                  </td>
+                  <td className="px-4 py-2">
+                    <select
+                      value={item.category}
+                      aria-label="카테고리"
+                      onChange={(e) => onUpdateItem(index, "category", e.target.value)}
+                      className="w-full rounded-md border border-transparent bg-transparent px-1 py-1 font-semibold text-slate-700 hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                    >
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="number"
+                      aria-label="금액"
+                      value={item.amount}
+                      step={1000}
+                      onChange={(e) => onUpdateItem(index, "amount", Number(e.target.value) || 0)}
+                      className={`w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-right font-bold hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none ${
+                        isRefund ? "text-rose-600" : "text-slate-800"
+                      }`}
+                    />
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    <button
+                      type="button"
+                      aria-label="항목 삭제"
+                      onClick={() => onDeleteItem(index)}
+                      className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
