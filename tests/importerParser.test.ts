@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseTextLocally } from "@/lib/importerParser";
+import {
+  parseTextLocally,
+  validateImageFile,
+  MAX_IMAGE_FILE_SIZE,
+  ALLOWED_IMAGE_MIME_TYPES,
+  ALLOWED_IMAGE_EXTENSIONS,
+} from "@/lib/importerParser";
 
 describe("parseTextLocally", () => {
   it("카드 승인 문자 포맷에서 편의점 결제 건을 올바르게 파싱한다", () => {
@@ -126,3 +132,78 @@ describe("parseTextLocally", () => {
     });
   });
 });
+
+describe("validateImageFile", () => {
+  it("허용 MIME 타입 및 확장자 목록이 올바르게 정의되어 있어야 한다", () => {
+    expect(ALLOWED_IMAGE_MIME_TYPES).toContain("image/jpeg");
+    expect(ALLOWED_IMAGE_MIME_TYPES).toContain("image/png");
+    expect(ALLOWED_IMAGE_MIME_TYPES).toContain("image/webp");
+    expect(ALLOWED_IMAGE_MIME_TYPES).toContain("image/heic");
+    expect(ALLOWED_IMAGE_EXTENSIONS).toContain(".jpg");
+    expect(ALLOWED_IMAGE_EXTENSIONS).toContain(".jpeg");
+    expect(ALLOWED_IMAGE_EXTENSIONS).toContain(".png");
+    expect(ALLOWED_IMAGE_EXTENSIONS).toContain(".webp");
+    expect(ALLOWED_IMAGE_EXTENSIONS).toContain(".heic");
+  });
+
+  it("허용된 이미지 형식(JPG, PNG, WebP, HEIC)의 10MB 이하 파일은 유효성 검사를 통과한다", () => {
+    const formats = [
+      { name: "receipt.jpg", type: "image/jpeg" },
+      { name: "receipt.jpeg", type: "image/jpeg" },
+      { name: "receipt.png", type: "image/png" },
+      { name: "receipt.webp", type: "image/webp" },
+      { name: "receipt.heic", type: "image/heic" },
+    ];
+
+    for (const fmt of formats) {
+      const file = new File(["dummy content"], fmt.name, { type: fmt.type });
+      const result = validateImageFile(file);
+      expect(result.isValid).toBe(true);
+      expect(result.error).toBeUndefined();
+    }
+  });
+
+  it("10MB 이하의 경계값 파일은 통과하고, 10MB를 초과하는 파일은 차단한다", () => {
+    const validFile = new File(["a"], "valid.png", { type: "image/png" });
+    Object.defineProperty(validFile, "size", { value: MAX_IMAGE_FILE_SIZE });
+    expect(validateImageFile(validFile).isValid).toBe(true);
+
+    const exceedFile = new File(["b"], "large.png", { type: "image/png" });
+    Object.defineProperty(exceedFile, "size", { value: MAX_IMAGE_FILE_SIZE + 1 });
+    const result = validateImageFile(exceedFile);
+    expect(result.isValid).toBe(false);
+    expect(result.error).toContain("최대 10MB");
+
+    // 30MB 고화질 사진 테스트
+    const hugeFile = new File(["c"], "huge-photo.jpg", { type: "image/jpeg" });
+    Object.defineProperty(hugeFile, "size", { value: 30 * 1024 * 1024 });
+    const hugeResult = validateImageFile(hugeFile);
+    expect(hugeResult.isValid).toBe(false);
+    expect(hugeResult.error).toContain("최대 10MB");
+  });
+
+  it("지원하지 않는 MIME 타입 또는 확장자의 파일은 차단한다", () => {
+    const unsupportedFiles = [
+      new File(["gif"], "animated.gif", { type: "image/gif" }),
+      new File(["svg"], "vector.svg", { type: "image/svg+xml" }),
+      new File(["pdf"], "receipt.pdf", { type: "application/pdf" }),
+      new File(["txt"], "memo.txt", { type: "text/plain" }),
+    ];
+
+    for (const file of unsupportedFiles) {
+      const result = validateImageFile(file);
+      expect(result.isValid).toBe(false);
+      expect(result.error).toContain("지원하지 않는 이미지 형식");
+    }
+  });
+
+  it("MIME 타입이 비어있거나 generic이어도 확장자가 유효한 포맷이면 통과한다", () => {
+    // 모바일 브라우저나 OS에서 HEIC/WebP 파일의 type이 빈 문자열로 전달되는 케이스
+    const heicFile = new File(["heic"], "iphone-photo.HEIC", { type: "" });
+    expect(validateImageFile(heicFile).isValid).toBe(true);
+
+    const webpFile = new File(["webp"], "photo.webp", { type: "application/octet-stream" });
+    expect(validateImageFile(webpFile).isValid).toBe(true);
+  });
+});
+
