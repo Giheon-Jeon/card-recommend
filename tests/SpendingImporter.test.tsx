@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { SpendingImporter } from "@/components/SpendingImporter";
 import { SimulatorPage } from "@/components/SimulatorPage";
@@ -97,5 +97,68 @@ describe("SpendingImporter and SimulatorPage ErrorBoundary integration", () => {
 
     // 음수가 되지 않고 최소 0원으로 유지됨
     expect(screen.getAllByText("0원").length).toBeGreaterThan(0);
+  });
+
+  describe("영수증 이미지 업로드 파일 크기 및 포맷 검증", () => {
+    it("영수증 이미지 탭에서 허용 포맷 및 최대 10MB 안내 라벨이 표시되어야 한다", () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+      const imageTabButton = screen.getByRole("button", { name: /영수증 이미지/ });
+      fireEvent.click(imageTabButton);
+
+      expect(screen.getByText("최대 10MB, JPG/PNG/WebP 지원")).toBeInTheDocument();
+      const input = screen.getByLabelText("이미지 파일 선택") as HTMLInputElement;
+      expect(input.accept).toContain("image/jpeg");
+      expect(input.accept).toContain("image/png");
+      expect(input.accept).toContain("image/webp");
+      expect(input.accept).toContain("image/heic");
+    });
+
+    it("10MB를 초과하는 대용량 파일 업로드 시 에러 메시지를 표시하고 처리를 중단한다", () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+      const imageTabButton = screen.getByRole("button", { name: /영수증 이미지/ });
+      fireEvent.click(imageTabButton);
+
+      const largeFile = new File(["dummy"], "heavy-receipt.jpg", { type: "image/jpeg" });
+      Object.defineProperty(largeFile, "size", { value: 15 * 1024 * 1024 }); // 15MB
+
+      const input = screen.getByLabelText("이미지 파일 선택");
+      fireEvent.change(input, { target: { files: [largeFile] } });
+
+      expect(screen.getByText("파일 크기는 최대 10MB 이하만 업로드 가능합니다.")).toBeInTheDocument();
+      expect(screen.queryByText(/파일 준비됨/)).not.toBeInTheDocument();
+    });
+
+    it("지원하지 않는 포맷(예: gif, pdf 등) 업로드 시 에러 메시지를 표시하고 처리를 중단한다", () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+      const imageTabButton = screen.getByRole("button", { name: /영수증 이미지/ });
+      fireEvent.click(imageTabButton);
+
+      const invalidFile = new File(["dummy"], "receipt.gif", { type: "image/gif" });
+      const input = screen.getByLabelText("이미지 파일 선택");
+      fireEvent.change(input, { target: { files: [invalidFile] } });
+
+      expect(screen.getByText("지원하지 않는 이미지 형식입니다. JPG, PNG, WebP, HEIC 파일만 지원합니다.")).toBeInTheDocument();
+      expect(screen.queryByText(/파일 준비됨/)).not.toBeInTheDocument();
+    });
+
+    it("허용된 포맷의 정상 크기 파일 업로드 시 에러 없이 파일 준비 상태로 전환된다", async () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+      const imageTabButton = screen.getByRole("button", { name: /영수증 이미지/ });
+      fireEvent.click(imageTabButton);
+
+      const validFile = new File(["dummy-image-content"], "receipt.png", { type: "image/png" });
+      Object.defineProperty(validFile, "size", { value: 2 * 1024 * 1024 }); // 2MB
+
+      const input = screen.getByLabelText("이미지 파일 선택");
+      fireEvent.change(input, { target: { files: [validFile] } });
+
+      expect(screen.queryByText("파일 크기는 최대 10MB 이하만 업로드 가능합니다.")).not.toBeInTheDocument();
+      expect(screen.queryByText("지원하지 않는 이미지 형식입니다. JPG, PNG, WebP, HEIC 파일만 지원합니다.")).not.toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByText("파일 준비됨: receipt.png")).toBeInTheDocument();
+        expect(screen.getByText("크기: 2048.0 KB")).toBeInTheDocument();
+      });
+    });
   });
 });
