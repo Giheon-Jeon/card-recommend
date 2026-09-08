@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { Upload, FileText, AlertCircle, ArrowRight, HelpCircle, Zap, RefreshCw } from "lucide-react";
-import { parseTextLocally, parseWithGemini, type ParsedSpendingItem } from "@/lib/importerParser";
+import {
+  parseTextLocally,
+  parseWithGemini,
+  validateImageFile,
+  type ParsedSpendingItem,
+} from "@/lib/importerParser";
 import type { Category } from "@/types/card";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { ParsedItemsTable } from "@/components/ParsedItemsTable";
@@ -75,10 +80,15 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
   };
 
   const handleFileChange = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setAnalysisError("이미지 파일만 업로드할 수 있습니다.");
+    const validation = validateImageFile(file);
+    if (!validation.isValid) {
+      setAnalysisError(validation.error || "올바르지 않은 파일입니다.");
+      setSelectedFile(null);
+      setImagePreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
+
     setSelectedFile(file);
     setAnalysisError(null);
 
@@ -361,7 +371,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileSelect}
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic"
                   aria-label="이미지 파일 선택"
                   className="hidden"
                 />
@@ -380,7 +390,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
                 >
                   <Upload className="h-8 w-8 text-slate-400 mb-2 group-hover:text-indigo-500" />
                   <p className="text-xs font-bold text-slate-700">영수증 또는 이용 명세서 캡처 업로드</p>
-                  <p className="mt-1 text-[10px] text-slate-400">클릭하거나 이미지 파일을 여기로 드래그하세요 (PNG, JPG)</p>
+                  <p className="mt-1 text-[10px] text-slate-400">최대 10MB, JPG/PNG/WebP 지원</p>
                 </button>
               </>
             ) : (
