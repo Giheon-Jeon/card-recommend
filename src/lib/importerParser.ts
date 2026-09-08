@@ -131,6 +131,57 @@ export function parseTextLocally(text: string): ParsedSpendingItem[] {
 }
 
 /**
+ * 업로드 허용 최대 이미지 크기 (10MB) 및 허용 포맷 정의
+ */
+export const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+export const ALLOWED_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+] as const;
+
+export const ALLOWED_IMAGE_EXTENSIONS = [
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".heic",
+] as const;
+
+export interface FileValidationResult {
+  isValid: boolean;
+  error?: string;
+}
+
+/**
+ * 영수증 이미지 파일 크기 및 포맷 검증
+ * - 최대 10MB 제한
+ * - Gemini API 권장 포맷 (JPG, PNG, WebP, HEIC) 화이트리스트 검증
+ */
+export function validateImageFile(file: File): FileValidationResult {
+  if (file.size > MAX_IMAGE_FILE_SIZE) {
+    return {
+      isValid: false,
+      error: "파일 크기는 최대 10MB 이하만 업로드 가능합니다.",
+    };
+  }
+
+  const fileExt = "." + (file.name.split(".").pop() || "").toLowerCase();
+  const isMimeAllowed = ALLOWED_IMAGE_MIME_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_MIME_TYPES)[number]);
+  const isExtAllowed = ALLOWED_IMAGE_EXTENSIONS.includes(fileExt as (typeof ALLOWED_IMAGE_EXTENSIONS)[number]);
+
+  if (!isMimeAllowed && !isExtAllowed) {
+    return {
+      isValid: false,
+      error: "지원하지 않는 이미지 형식입니다. JPG, PNG, WebP, HEIC 파일만 지원합니다.",
+    };
+  }
+
+  return { isValid: true };
+}
+
+/**
  * File 객체를 Base64 및 MIME 타입 정보가 담긴 Part 객체로 변환합니다.
  */
 async function fileToGenerativePart(file: File): Promise<{ inlineData: { data: string; mimeType: string } }> {
@@ -199,6 +250,10 @@ export async function parseWithGemini(
   const contents: (string | { inlineData: { data: string; mimeType: string } })[] = [prompt];
 
   if (imageFile) {
+    const validation = validateImageFile(imageFile);
+    if (!validation.isValid) {
+      throw new Error(validation.error);
+    }
     const imagePart = await fileToGenerativePart(imageFile);
     contents.push(imagePart);
   }
