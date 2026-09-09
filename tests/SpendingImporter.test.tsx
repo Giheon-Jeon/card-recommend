@@ -161,4 +161,65 @@ describe("SpendingImporter and SimulatorPage ErrorBoundary integration", () => {
       });
     });
   });
+
+  describe("파싱 결과 테이블 직접 항목 추가 및 일괄 삭제 연동", () => {
+    it("텍스트 파싱 후 항목을 직접 추가하고 입력하여 시뮬레이터에 적용할 수 있어야 한다", () => {
+      const handleImport = vi.fn();
+      render(<SpendingImporter categories={mockCategories} onImport={handleImport} />);
+
+      const textTabButton = screen.getByRole("button", { name: /결제 내역 텍스트/ });
+      fireEvent.click(textTabButton);
+
+      const textarea = screen.getByPlaceholderText(/예시:/);
+      fireEvent.change(textarea, { target: { value: "스타벅스 10,000원" } });
+      const analyzeBtn = screen.getByRole("button", { name: /분석 실행/ });
+      fireEvent.click(analyzeBtn);
+
+      expect(screen.getByText("지출 파싱 결과 미리보기 (1건)")).toBeInTheDocument();
+
+      const addBtn = screen.getByRole("button", { name: /지출 항목 직접 추가/ });
+      fireEvent.click(addBtn);
+
+      expect(screen.getByText("지출 파싱 결과 미리보기 (2건)")).toBeInTheDocument();
+
+      const merchantInputs = screen.getAllByLabelText("가맹점명");
+      const amountInputs = screen.getAllByLabelText("금액");
+
+      fireEvent.change(merchantInputs[1], { target: { value: "이마트" } });
+      fireEvent.change(amountInputs[1], { target: { value: "30000" } });
+
+      const applyBtn = screen.getByRole("button", { name: /지출 시뮬레이터에 적용/ });
+      fireEvent.click(applyBtn);
+
+      expect(handleImport).toHaveBeenCalledWith(
+        [
+          { merchant: "스타벅스", amount: 10000, category: "cafe" },
+          { merchant: "이마트", amount: 30000, category: "transport" },
+        ],
+        "merge"
+      );
+    });
+
+    it("파싱된 항목을 전체 선택하여 일괄 삭제할 수 있어야 한다", () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+
+      const textTabButton = screen.getByRole("button", { name: /결제 내역 텍스트/ });
+      fireEvent.click(textTabButton);
+
+      const textarea = screen.getByPlaceholderText(/예시:/);
+      fireEvent.change(textarea, { target: { value: "스타벅스 10,000원\n이마트 20,000원" } });
+      const analyzeBtn = screen.getByRole("button", { name: /분석 실행/ });
+      fireEvent.click(analyzeBtn);
+
+      expect(screen.getByText("지출 파싱 결과 미리보기 (2건)")).toBeInTheDocument();
+
+      const selectAll = screen.getByLabelText("전체 선택");
+      fireEvent.click(selectAll);
+
+      const deleteSelectedBtn = screen.getAllByRole("button", { name: /선택 삭제/ })[0];
+      fireEvent.click(deleteSelectedBtn);
+
+      expect(screen.queryByText(/지출 파싱 결과 미리보기/)).not.toBeInTheDocument();
+    });
+  });
 });

@@ -122,6 +122,19 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
     setParsedItems((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleDeleteSelected = (indices: number[]) => {
+    const set = new Set(indices);
+    setParsedItems((prev) => prev.filter((_, i) => !set.has(i)));
+  };
+
+  const handleAddItem = () => {
+    const defaultCategory = categories[0]?.id || "other";
+    setParsedItems((prev) => [
+      ...prev,
+      { merchant: "", amount: 0, category: defaultCategory },
+    ]);
+  };
+
   // 텍스트 분석 실행
   const handleAnalyzeText = async () => {
     if (!textInput.trim()) {
@@ -220,6 +233,11 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
   // 최종 지출 시뮬레이터에 적용
   const handleApply = () => {
     if (parsedItems.length === 0) return;
+    const hasInvalid = parsedItems.some((item) => !item.merchant.trim() || item.amount === 0);
+    if (hasInvalid) {
+      setAnalysisError("가맹점명이 비어있거나 금액이 0원인 항목이 있습니다. 확인 후 다시 시도해 주세요.");
+      return;
+    }
     onImport(parsedItems, importMode);
     // 상태 초기화
     setParsedItems([]);
@@ -473,6 +491,8 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
             items={parsedItems}
             onUpdateItem={handleUpdateItem}
             onDeleteItem={handleDeleteItem}
+            onDeleteSelected={handleDeleteSelected}
+            onAddItem={handleAddItem}
             importMode={importMode}
             onImportModeChange={setImportMode}
             onCancel={() => setParsedItems([])}
