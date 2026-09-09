@@ -122,6 +122,11 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
     setParsedItems((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleDeleteSelected = (indices: number[]) => {
+    const set = new Set(indices);
+    setParsedItems((prev) => prev.filter((_, i) => !set.has(i)));
+  };
+
   const handleAddItem = () => {
     const defaultCategory = categories[0]?.id || "other";
     setParsedItems((prev) => [
@@ -481,6 +486,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
             items={parsedItems}
             onUpdateItem={handleUpdateItem}
             onDeleteItem={handleDeleteItem}
+            onDeleteSelected={handleDeleteSelected}
             onAddItem={handleAddItem}
             importMode={importMode}
             onImportModeChange={setImportMode}

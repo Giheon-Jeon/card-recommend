@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Check, Plus, Trash2 } from "lucide-react";
 import type { Category } from "@/types/card";
 import type { ParsedSpendingItem } from "@/lib/importerParser";
@@ -13,6 +14,7 @@ interface ParsedItemsTableProps {
     value: ParsedSpendingItem[K],
   ) => void;
   onDeleteItem: (index: number) => void;
+  onDeleteSelected?: (indices: number[]) => void;
   onAddItem?: () => void;
   importMode: ImportMode;
   onImportModeChange: (mode: ImportMode) => void;
@@ -26,15 +28,62 @@ export function ParsedItemsTable({
   items,
   onUpdateItem,
   onDeleteItem,
+  onDeleteSelected,
   onAddItem,
   importMode,
   onImportModeChange,
   onCancel,
   onApply,
 }: ParsedItemsTableProps) {
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+
   const hasRefund = items.some((item) => item.amount < 0);
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
   const totalCount = items.length;
+
+  const handleToggleAll = () => {
+    if (selectedIndices.size === items.length) {
+      setSelectedIndices(new Set());
+    } else {
+      setSelectedIndices(new Set(items.map((_, i) => i)));
+    }
+  };
+
+  const handleToggleIndex = (index: number) => {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIndices.size === 0) return;
+    const indices = Array.from(selectedIndices);
+    if (onDeleteSelected) {
+      onDeleteSelected(indices);
+    } else {
+      const sorted = [...indices].sort((a, b) => b - a);
+      sorted.forEach((idx) => onDeleteItem(idx));
+    }
+    setSelectedIndices(new Set());
+  };
+
+  const handleSingleDelete = (index: number) => {
+    onDeleteItem(index);
+    setSelectedIndices((prev) => {
+      const next = new Set<number>();
+      for (const i of prev) {
+        if (i < index) next.add(i);
+        else if (i > index) next.add(i - 1);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="mt-6 border-t border-slate-100 pt-5 animate-fadeIn">
@@ -49,11 +98,23 @@ export function ParsedItemsTable({
 
       {/* 총 파싱 요약 배너 */}
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-600">파싱 건수:</span>
-          <span className="rounded-md bg-indigo-100/80 px-2 py-0.5 text-xs font-bold text-indigo-700">
-            {totalCount}건
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-600">파싱 건수:</span>
+            <span className="rounded-md bg-indigo-100/80 px-2 py-0.5 text-xs font-bold text-indigo-700">
+              {totalCount}건
+            </span>
+          </div>
+          {selectedIndices.size > 0 && (
+            <button
+              type="button"
+              onClick={handleDeleteSelected}
+              className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200 px-2 py-0.5 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-colors"
+            >
+              <Trash2 className="h-3 w-3" />
+              선택 삭제 ({selectedIndices.size}개)
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-1.5 text-xs">
           <span className="font-semibold text-slate-600">총 파싱 금액:</span>
@@ -67,6 +128,15 @@ export function ParsedItemsTable({
         <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
           <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
             <tr>
+              <th className="px-3 py-2.5 w-10 text-center">
+                <input
+                  type="checkbox"
+                  aria-label="전체 선택"
+                  checked={items.length > 0 && selectedIndices.size === items.length}
+                  onChange={handleToggleAll}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+              </th>
               <th className="px-4 py-2.5">가맹점(내역)</th>
               <th className="px-4 py-2.5 w-32">카테고리</th>
               <th className="px-4 py-2.5 w-32">금액</th>
@@ -76,8 +146,23 @@ export function ParsedItemsTable({
           <tbody className="divide-y divide-slate-100 bg-white">
             {items.map((item, index) => {
               const isRefund = item.amount < 0;
+              const isSelected = selectedIndices.has(index);
               return (
-                <tr key={index} className={`hover:bg-slate-50/50 ${isRefund ? "bg-rose-50/20" : ""}`}>
+                <tr
+                  key={index}
+                  className={`hover:bg-slate-50/50 ${
+                    isSelected ? "bg-indigo-50/40" : isRefund ? "bg-rose-50/20" : ""
+                  }`}
+                >
+                  <td className="px-3 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      aria-label={`항목 선택 ${index + 1}`}
+                      checked={isSelected}
+                      onChange={() => handleToggleIndex(index)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1.5">
                       {isRefund && (
@@ -124,7 +209,7 @@ export function ParsedItemsTable({
                     <button
                       type="button"
                       aria-label="항목 삭제"
-                      onClick={() => onDeleteItem(index)}
+                      onClick={() => handleSingleDelete(index)}
                       className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -137,8 +222,8 @@ export function ParsedItemsTable({
         </table>
       </div>
 
-      {onAddItem && (
-        <div className="mt-2.5 flex justify-start">
+      <div className="mt-2.5 flex items-center justify-between">
+        {onAddItem ? (
           <button
             type="button"
             onClick={onAddItem}
@@ -147,8 +232,19 @@ export function ParsedItemsTable({
             <Plus className="h-3.5 w-3.5" />
             지출 항목 직접 추가
           </button>
-        </div>
-      )}
+        ) : <div />}
+
+        {selectedIndices.size > 0 && (
+          <button
+            type="button"
+            onClick={handleDeleteSelected}
+            className="inline-flex items-center gap-1 rounded-lg bg-rose-50 border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            선택 삭제 ({selectedIndices.size}개)
+          </button>
+        )}
+      </div>
 
       <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl border border-indigo-100 bg-indigo-50/20 p-4 sm:flex-row sm:items-center">
         <div className="flex flex-wrap items-center gap-4">
