@@ -33,16 +33,34 @@ export function ParsedItemsTable({
   onApply,
 }: ParsedItemsTableProps) {
   const hasRefund = items.some((item) => item.amount < 0);
+  const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+  const totalCount = items.length;
 
   return (
     <div className="mt-6 border-t border-slate-100 pt-5 animate-fadeIn">
-      <div className="mb-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-        <h3 className="text-sm font-bold text-slate-800">지출 파싱 결과 미리보기 ({items.length}건)</h3>
+      <div className="mb-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+        <h3 className="text-sm font-bold text-slate-800">지출 파싱 결과 미리보기 ({totalCount}건)</h3>
         <span className="text-xs text-slate-400">
           {hasRefund
             ? "💡 환불/취소 내역(음수 금액)은 시뮬레이터 적용 시 지출에서 차감됩니다."
             : "데이터를 검토하고 수정한 뒤 시뮬레이터에 적용하세요."}
         </span>
+      </div>
+
+      {/* 총 파싱 요약 배너 */}
+      <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-600">파싱 건수:</span>
+          <span className="rounded-md bg-indigo-100/80 px-2 py-0.5 text-xs font-bold text-indigo-700">
+            {totalCount}건
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="font-semibold text-slate-600">총 파싱 금액:</span>
+          <span className="text-sm font-extrabold text-indigo-600">
+            {totalAmount.toLocaleString()}원
+          </span>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -133,27 +151,36 @@ export function ParsedItemsTable({
       )}
 
       <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl border border-indigo-100 bg-indigo-50/20 p-4 sm:flex-row sm:items-center">
-        <div className="flex gap-4">
-          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
-            <input
-              type="radio"
-              name="importMode"
-              checked={importMode === "merge"}
-              onChange={() => onImportModeChange("merge")}
-              className="text-indigo-600 focus:ring-indigo-500"
-            />
-            기존 지출액에 합산 (누적)
-          </label>
-          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
-            <input
-              type="radio"
-              name="importMode"
-              checked={importMode === "overwrite"}
-              onChange={() => onImportModeChange("overwrite")}
-              className="text-indigo-600 focus:ring-indigo-500"
-            />
-            기존 값 덮어쓰기 (교체)
-          </label>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex gap-4">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+              <input
+                type="radio"
+                name="importMode"
+                checked={importMode === "merge"}
+                onChange={() => onImportModeChange("merge")}
+                className="text-indigo-600 focus:ring-indigo-500"
+              />
+              기존 지출액에 합산 (누적)
+            </label>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+              <input
+                type="radio"
+                name="importMode"
+                checked={importMode === "overwrite"}
+                onChange={() => onImportModeChange("overwrite")}
+                className="text-indigo-600 focus:ring-indigo-500"
+              />
+              기존 값 덮어쓰기 (교체)
+            </label>
+          </div>
+
+          <div className="hidden md:flex items-center gap-1.5 border-l border-indigo-200 pl-4 text-xs">
+            <span className="text-slate-500 font-medium">총 파싱 금액:</span>
+            <span className="font-extrabold text-indigo-700 text-sm">
+              {totalAmount.toLocaleString()}원
+            </span>
+          </div>
         </div>
 
         <div className="flex gap-2 justify-end">
