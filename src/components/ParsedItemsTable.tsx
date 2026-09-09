@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, Check, Plus, Trash2 } from "lucide-react";
 import type { Category } from "@/types/card";
 import type { ParsedSpendingItem } from "@/lib/importerParser";
 
@@ -36,6 +36,7 @@ export function ParsedItemsTable({
   onApply,
 }: ParsedItemsTableProps) {
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const hasRefund = items.some((item) => item.amount < 0);
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
@@ -85,6 +86,23 @@ export function ParsedItemsTable({
     });
   };
 
+  const handleApplyClick = () => {
+    const emptyMerchantIdx = items.findIndex((item) => !item.merchant.trim());
+    if (emptyMerchantIdx !== -1) {
+      setValidationError(`${emptyMerchantIdx + 1}번째 항목의 가맹점명을 입력해 주세요.`);
+      return;
+    }
+
+    const invalidAmountIdx = items.findIndex((item) => item.amount === 0);
+    if (invalidAmountIdx !== -1) {
+      setValidationError(`${invalidAmountIdx + 1}번째 항목의 금액을 0원 초과하여 입력해 주세요.`);
+      return;
+    }
+
+    setValidationError(null);
+    onApply();
+  };
+
   return (
     <div className="mt-6 border-t border-slate-100 pt-5 animate-fadeIn">
       <div className="mb-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
@@ -95,6 +113,13 @@ export function ParsedItemsTable({
             : "데이터를 검토하고 수정한 뒤 시뮬레이터에 적용하세요."}
         </span>
       </div>
+
+      {validationError && (
+        <div className="mb-3 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700 font-medium">
+          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+          <span>{validationError}</span>
+        </div>
+      )}
 
       {/* 총 파싱 요약 배너 */}
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-2.5">
@@ -147,6 +172,9 @@ export function ParsedItemsTable({
             {items.map((item, index) => {
               const isRefund = item.amount < 0;
               const isSelected = selectedIndices.has(index);
+              const isMerchantEmpty = !item.merchant.trim();
+              const isAmountZero = item.amount === 0;
+
               return (
                 <tr
                   key={index}
@@ -173,9 +201,17 @@ export function ParsedItemsTable({
                       <input
                         type="text"
                         aria-label="가맹점명"
+                        placeholder={isMerchantEmpty ? "가맹점명 필수 입력" : ""}
                         value={item.merchant}
-                        onChange={(e) => onUpdateItem(index, "merchant", e.target.value)}
-                        className="w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 font-medium text-slate-800 hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                        onChange={(e) => {
+                          if (validationError) setValidationError(null);
+                          onUpdateItem(index, "merchant", e.target.value);
+                        }}
+                        className={`w-full rounded-md border px-1.5 py-1 font-medium text-slate-800 focus:bg-white focus:outline-none ${
+                          isMerchantEmpty && validationError
+                            ? "border-rose-400 bg-rose-50/40 placeholder:text-rose-400 focus:border-rose-500"
+                            : "border-transparent bg-transparent hover:border-slate-200 focus:border-indigo-500"
+                        }`}
                       />
                     </div>
                   </td>
@@ -199,9 +235,16 @@ export function ParsedItemsTable({
                       aria-label="금액"
                       value={item.amount}
                       step={1000}
-                      onChange={(e) => onUpdateItem(index, "amount", Number(e.target.value) || 0)}
-                      className={`w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-right font-bold hover:border-slate-200 focus:border-indigo-500 focus:bg-white focus:outline-none ${
-                        isRefund ? "text-rose-600" : "text-slate-800"
+                      onChange={(e) => {
+                        if (validationError) setValidationError(null);
+                        onUpdateItem(index, "amount", Number(e.target.value) || 0);
+                      }}
+                      className={`w-full rounded-md border px-1.5 py-1 text-right font-bold focus:bg-white focus:outline-none ${
+                        isAmountZero && validationError
+                          ? "border-rose-400 bg-rose-50/40 text-rose-600 focus:border-rose-500"
+                          : isRefund
+                          ? "border-transparent bg-transparent text-rose-600 hover:border-slate-200 focus:border-indigo-500"
+                          : "border-transparent bg-transparent text-slate-800 hover:border-slate-200 focus:border-indigo-500"
                       }`}
                     />
                   </td>
@@ -287,7 +330,7 @@ export function ParsedItemsTable({
             취소
           </button>
           <button
-            onClick={onApply}
+            onClick={handleApplyClick}
             className="flex items-center gap-1 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition-colors"
           >
             <Check className="h-4 w-4" />
