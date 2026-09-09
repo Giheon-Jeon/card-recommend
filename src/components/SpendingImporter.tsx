@@ -122,6 +122,14 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
     setParsedItems((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleAddItem = () => {
+    const defaultCategory = categories[0]?.id || "other";
+    setParsedItems((prev) => [
+      ...prev,
+      { merchant: "", amount: 0, category: defaultCategory },
+    ]);
+  };
+
   // 텍스트 분석 실행
   const handleAnalyzeText = async () => {
     if (!textInput.trim()) {
@@ -473,6 +481,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
             items={parsedItems}
             onUpdateItem={handleUpdateItem}
             onDeleteItem={handleDeleteItem}
+            onAddItem={handleAddItem}
             importMode={importMode}
             onImportModeChange={setImportMode}
             onCancel={() => setParsedItems([])}

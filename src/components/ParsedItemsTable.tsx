@@ -1,4 +1,4 @@
-import { Check, Trash2 } from "lucide-react";
+import { Check, Plus, Trash2 } from "lucide-react";
 import type { Category } from "@/types/card";
 import type { ParsedSpendingItem } from "@/lib/importerParser";
 
@@ -13,6 +13,7 @@ interface ParsedItemsTableProps {
     value: ParsedSpendingItem[K],
   ) => void;
   onDeleteItem: (index: number) => void;
+  onAddItem?: () => void;
   importMode: ImportMode;
   onImportModeChange: (mode: ImportMode) => void;
   onCancel: () => void;
@@ -25,6 +26,7 @@ export function ParsedItemsTable({
   items,
   onUpdateItem,
   onDeleteItem,
+  onAddItem,
   importMode,
   onImportModeChange,
   onCancel,
@@ -116,6 +118,19 @@ export function ParsedItemsTable({
           </tbody>
         </table>
       </div>
+
+      {onAddItem && (
+        <div className="mt-2.5 flex justify-start">
+          <button
+            type="button"
+            onClick={onAddItem}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-indigo-300 bg-indigo-50/60 px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-100/70 hover:border-indigo-400 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            지출 항목 직접 추가
+          </button>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl border border-indigo-100 bg-indigo-50/20 p-4 sm:flex-row sm:items-center">
         <div className="flex gap-4">
