@@ -3,8 +3,8 @@ import { rankCards, bestCardPerCategory } from "@/lib/recommender";
 import { catalogCards, isInfoInsufficient, categories } from "@/lib/loadCatalog";
 import { catalogEntryToCard } from "@/lib/cardConverter";
 import type { useMyCards } from "@/lib/myCards";
-import type { CardType, SpendingProfile } from "@/types/card";
-import type { ParsedSpendingItem } from "@/lib/importerParser";
+import type { CardType } from "@/types/card";
+import { useSpendingProfile } from "@/lib/spendingProfile";
 import { SpendingSimulator } from "@/components/SpendingSimulator";
 import { CardList } from "@/components/CardList";
 import { RecommendationResult } from "@/components/RecommendationResult";
@@ -15,13 +15,6 @@ const ALL_CARD_TYPES: CardType[] = ["credit", "check"];
 /** 카드 비교 테이블에 표시할 "전체 카드" 모드의 최대 행 수 (전체 카탈로그를 다 그리면 느려지므로 상위 N개만 표시) */
 const ALL_CARDS_DISPLAY_LIMIT = 30;
 type SimulatorScope = "myCards" | "all";
-
-function initialSpending(): SpendingProfile {
-  return categories.reduce<SpendingProfile>((acc, category) => {
-    acc[category.id] = 0;
-    return acc;
-  }, {});
-}
 
 interface SimulatorPageProps {
   myCards: ReturnType<typeof useMyCards>;
@@ -34,31 +27,10 @@ interface SimulatorPageProps {
  * 대상으로 지출 프로필 기준 최적 카드를 계산해 보여줍니다.
  */
 export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
-  const [spending, setSpending] = useState<SpendingProfile>(initialSpending);
+  const { spending, updateCategory, resetSpending, applyImportedItems } =
+    useSpendingProfile(categories);
   const [cardTypes, setCardTypes] = useState<CardType[]>(ALL_CARD_TYPES);
   const [scope, setScope] = useState<SimulatorScope>("myCards");
-
-  const handleChange = (categoryId: string, value: number) => {
-    setSpending((prev) => ({ ...prev, [categoryId]: value }));
-  };
-
-  const handleImport = (items: ParsedSpendingItem[], mode: "merge" | "overwrite") => {
-    setSpending((prev) => {
-      const next = mode === "overwrite" ? initialSpending() : { ...prev };
-      items.forEach((item) => {
-        if (next[item.category] !== undefined) {
-          next[item.category] += item.amount;
-        } else {
-          next["etc"] = (next["etc"] || 0) + item.amount;
-        }
-      });
-      // 환불/취소 내역으로 인해 지출액이 음수가 되지 않도록 최소 0원 하한 보정
-      Object.keys(next).forEach((key) => {
-        next[key] = Math.max(0, next[key]);
-      });
-      return next;
-    });
-  };
 
   const toggleCardType = (type: CardType) => {
     setCardTypes((prev) =>
@@ -159,9 +131,14 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
             fallbackTitle="지출 내역 가져오기 오류"
             fallbackMessage="지출 내역 가져오기 컴포넌트를 불러오는 중 오류가 발생했습니다. 다시 시도해 주세요."
           >
-            <SpendingImporter categories={categories} onImport={handleImport} />
+            <SpendingImporter categories={categories} onImport={applyImportedItems} />
           </ErrorBoundary>
-          <SpendingSimulator categories={categories} spending={spending} onChange={handleChange} />
+          <SpendingSimulator
+            categories={categories}
+            spending={spending}
+            onChange={updateCategory}
+            onReset={resetSpending}
+          />
           <RecommendationResult ranked={ranked} categoryWinners={categoryWinners} categories={categories} />
           <CardList
             evaluations={rankedForDisplay}
