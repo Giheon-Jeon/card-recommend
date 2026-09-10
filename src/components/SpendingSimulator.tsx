@@ -1,3 +1,4 @@
+import { RotateCcw } from "lucide-react";
 import type { Category, SpendingProfile } from "@/types/card";
 import { formatWon } from "@/lib/format";
 
@@ -5,18 +6,46 @@ interface SpendingSimulatorProps {
   categories: Category[];
   spending: SpendingProfile;
   onChange: (categoryId: string, value: number) => void;
+  onReset?: () => void;
 }
 
 const QUICK_STEPS = [0, 50000, 100000, 200000, 300000];
 
-export function SpendingSimulator({ categories, spending, onChange }: SpendingSimulatorProps) {
+export function SpendingSimulator({
+  categories,
+  spending,
+  onChange,
+  onReset,
+}: SpendingSimulatorProps) {
   const total = categories.reduce((sum, c) => sum + (spending[c.id] ?? 0), 0);
+
+  const handleResetClick = () => {
+    if (typeof window !== "undefined" && typeof window.confirm === "function") {
+      if (!window.confirm("모든 카테고리의 예상 월 지출액을 0원으로 초기화하시겠습니까?")) {
+        return;
+      }
+    }
+    onReset?.();
+  };
 
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">월 지출 시뮬레이터</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-slate-900">월 지출 시뮬레이터</h2>
+            {onReset && (
+              <button
+                type="button"
+                onClick={handleResetClick}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition hover:border-rose-200 hover:bg-rose-50/50 hover:text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                title="모든 지출 입력값 0원으로 초기화"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>전체 초기화</span>
+              </button>
+            )}
+          </div>
           <p className="mt-1 text-sm text-slate-500">
             카테고리별 예상 월 지출액을 입력하면 추천 결과가 바로 갱신됩니다.
           </p>
