@@ -1,6 +1,7 @@
 import { RotateCcw } from "lucide-react";
 import type { Category, SpendingProfile } from "@/types/card";
 import { formatWon } from "@/lib/format";
+import { getSliderMax } from "@/lib/spendingProfile";
 
 interface SpendingSimulatorProps {
   categories: Category[];
@@ -59,6 +60,8 @@ export function SpendingSimulator({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((category) => {
           const value = spending[category.id] ?? 0;
+          const sliderMax = getSliderMax(value);
+
           return (
             <div
               key={category.id}
@@ -68,12 +71,17 @@ export function SpendingSimulator({
                 <span className="text-sm font-medium text-slate-700">{category.label}</span>
                 <span className="text-xs font-semibold text-slate-400">{formatWon(value)}</span>
               </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                <span>0원</span>
+                <span>최대 {sliderMax >= 10000 ? `${sliderMax / 10000}만` : `${sliderMax}원`}</span>
+              </div>
               <input
                 type="range"
                 min={0}
-                max={1000000}
+                max={sliderMax}
                 step={10000}
                 value={value}
+                aria-label={`${category.label} 지출 슬라이더`}
                 onChange={(e) => onChange(category.id, Number(e.target.value))}
                 className="w-full accent-indigo-600"
               />
@@ -83,6 +91,7 @@ export function SpendingSimulator({
                   min={0}
                   step={10000}
                   value={value}
+                  aria-label={`${category.label} 지출 금액 입력`}
                   onChange={(e) => onChange(category.id, Number(e.target.value) || 0)}
                   className="w-full rounded-md border border-slate-200 px-2 py-1 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 />

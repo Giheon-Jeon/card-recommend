@@ -11,6 +11,13 @@ export function getInitialSpending(categories: Category[]): SpendingProfile {
   }, {});
 }
 
+export function getSliderMax(value: number): number {
+  if (value > 5000000) return Math.ceil(value / 1000000) * 1000000;
+  if (value > 3000000) return 5000000;
+  if (value > 1000000) return 3000000;
+  return 1000000;
+}
+
 export function readStoredSpending(categories: Category[]): SpendingProfile {
   const initial = getInitialSpending(categories);
   if (typeof window === "undefined" || !window.localStorage) {
