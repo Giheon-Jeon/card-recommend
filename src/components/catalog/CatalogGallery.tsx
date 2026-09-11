@@ -12,10 +12,13 @@ interface CatalogGalleryProps {
   myCards: ReturnType<typeof useMyCards>;
 }
 
+export type CatalogSortOption = "default" | "fee-asc" | "fee-desc" | "name-asc" | "newest";
+
 export function CatalogGallery({ myCards }: CatalogGalleryProps) {
   const [query, setQuery] = useState("");
   const [issuer, setIssuer] = useState<string>("");
   const [type, setType] = useState<string>("");
+  const [sortOption, setSortOption] = useState<CatalogSortOption>("default");
   const [hideInsufficient, setHideInsufficient] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
@@ -35,8 +38,35 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
     });
   }, [debouncedQuery, issuer, type, hideInsufficient]);
 
-  const visible = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
+  const sorted = useMemo(() => {
+    if (sortOption === "default") return filtered;
+    const items = [...filtered];
+    switch (sortOption) {
+      case "fee-asc":
+        return items.sort((a, b) => {
+          const feeA = a.annualFee ?? Number.MAX_SAFE_INTEGER;
+          const feeB = b.annualFee ?? Number.MAX_SAFE_INTEGER;
+          if (feeA !== feeB) return feeA - feeB;
+          return a.sourceId - b.sourceId;
+        });
+      case "fee-desc":
+        return items.sort((a, b) => {
+          const feeA = a.annualFee ?? -1;
+          const feeB = b.annualFee ?? -1;
+          if (feeA !== feeB) return feeB - feeA;
+          return a.sourceId - b.sourceId;
+        });
+      case "name-asc":
+        return items.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+      case "newest":
+        return items.sort((a, b) => b.sourceId - a.sourceId);
+      default:
+        return items;
+    }
+  }, [filtered, sortOption]);
+
+  const visible = sorted.slice(0, visibleCount);
+  const hasMore = visibleCount < sorted.length;
 
   const resetPaging = () => setVisibleCount(PAGE_SIZE);
 
@@ -46,7 +76,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          setVisibleCount((v) => Math.min(v + PAGE_SIZE, filtered.length));
+          setVisibleCount((v) => Math.min(v + PAGE_SIZE, sorted.length));
         }
       },
       { rootMargin: "300px" },
@@ -60,7 +90,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
     return () => {
       observer.disconnect();
     };
-  }, [hasMore, filtered.length]);
+  }, [hasMore, sorted.length]);
 
   return (
     <section className="flex flex-col gap-5">
@@ -131,6 +161,22 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
               {t}
             </option>
           ))}
+        </select>
+
+        <select
+          aria-label="정렬 기준"
+          value={sortOption}
+          onChange={(e) => {
+            setSortOption(e.target.value as CatalogSortOption);
+            resetPaging();
+          }}
+          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+        >
+          <option value="default">기본순</option>
+          <option value="fee-asc">연회비 낮은순</option>
+          <option value="fee-desc">연회비 높은순</option>
+          <option value="name-asc">카드명 가나다순</option>
+          <option value="newest">최신 등록순</option>
         </select>
 
         <button
