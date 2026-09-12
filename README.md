@@ -61,17 +61,21 @@ card-recommend/
 │   ├── 📁 catalog/             # fetch:catalog로 수집한 전체 카드 원본 데이터 (cards-catalog.json)
 │   └── 📁 cards/                # (선택) 전월실적 구간까지 직접 구조화한 수동 카드 데이터
 ├── 📁 src/
+│   ├── 📁 contexts/            # 전역 상태 관리 (GeminiApiKeyContext - API Key 로컬 보안 보관)
 │   ├── 📁 hooks/                 # 커스텀 훅 (useDebounce 등)
 │   ├── 📁 types/                # Card, CatalogEntry, SpendingProfile 등 공통 타입 정의
-│   ├── 📁 lib/                   # 카탈로그/카드 로더, 혜택 계산기, 추천 엔진, 지출 파서
+│   ├── 📁 lib/                   # 혜택 계산기, 추천 엔진, 지출 파서, myCards(JSON 백업/검증), spendingProfile(영구저장/스케일링)
 │   ├── 📁 components/
-│   │   ├── 📁 catalog/           # 카드 갤러리, 내 카드, 카드 상세 모달
+│   │   ├── 📁 catalog/           # CatalogGallery(카드 갤러리/다중정렬), MyCardsPage(내 카드/백업 UI), CardDetailModal(카드 상세 모달)
 │   │   ├── SimulatorPage.tsx     # 혜택 시뮬레이터 탭 (내 카드 / 전체 카드 추천, 지출 입력, 결과)
-│   │   ├── SpendingImporter.tsx  # 외부 지출 내역 가져오기 (데모/텍스트/이미지 탭)
-│   │   ├── ApiKeySettings.tsx    # Gemini API Key 등록 팝오버
-│   │   └── ParsedItemsTable.tsx  # 지출 파싱 결과 검토/수정 테이블
+│   │   ├── SpendingSimulator.tsx # 지출 금액 슬라이더 및 전체 예산 스케일링/초기화 컴포넌트
+│   │   ├── SpendingImporter.tsx  # 외부 지출 내역 가져오기 (데모/텍스트/이미지 영수증 검증 탭)
+│   │   ├── ParsedItemsTable.tsx  # 지출 파싱 결과 검토/수정, 행 직접 추가 및 일괄 삭제 테이블
+│   │   ├── ApiKeySettings.tsx    # Gemini API Key 보안 등록/관리 모달 팝오버
+│   │   ├── ErrorBoundary.tsx     # 전역 런타임 오류 포착 및 안전 복구 폴백 UI
+│   │   └── RecommendationResult.tsx # 추천 결과 카드 및 세부 혜택 계산 내역 표시
 │   └── App.tsx                  # 탭 전환 셸 (카드 갤러리 / 내 카드 / 혜택 시뮬레이터)
-├── 📁 tests/                    # Vitest 단위 테스트 파일
+├── 📁 tests/                    # Vitest 단위 테스트 파일 (컴포넌트, 유틸리티, 접근성 검증)
 └── 📁 scripts/
     ├── fetchCardCatalog.ts      # 카드고릴라 카탈로그 수집 스크립트
     └── validateCardData.ts      # data/cards 스키마 유효성 검사 스크립트
