@@ -105,7 +105,9 @@ npm run dev
 ```bash
 npm run build           # 타입 체크 + 프로덕션 빌드
 npm run test            # Vitest 단위 테스트 실행
-npm run lint            # oxlint 정적 분석
+npm run test:coverage   # Vitest 테스트 커버리지 리포트 생성
+npm run lint            # oxlint 코드 정적 분석
+npm run lint:a11y       # jsx-a11y 웹 접근성 정적 분석
 npm run fetch:catalog   # 카드 카탈로그 수집/갱신
 ```
 
