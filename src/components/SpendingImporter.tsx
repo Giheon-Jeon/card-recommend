@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Upload, FileText, AlertCircle, ArrowRight, HelpCircle, Zap, RefreshCw } from "lucide-react";
 import {
   parseTextLocally,
@@ -9,7 +9,8 @@ import {
 import type { Category } from "@/types/card";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { ParsedItemsTable } from "@/components/ParsedItemsTable";
-import { useGeminiApiKey } from "@/contexts/GeminiApiKeyContext";
+import { useGeminiApiKey } from "@/hooks/useGeminiApiKey";
+import type { StorageType } from "@/contexts/geminiApiKeyContextDef";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface SpendingImporterProps {
@@ -28,7 +29,6 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
   const [textInput, setTextInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
@@ -40,19 +40,21 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
   const [isDragOver, setIsDragOver] = useState(false);
 
   const { apiKey: savedApiKey, storageType: savedStorageType, saveApiKey, removeApiKey } = useGeminiApiKey();
+  const [draftApiKey, setDraftApiKey] = useState(savedApiKey);
+  const [prevSavedApiKey, setPrevSavedApiKey] = useState(savedApiKey);
 
-  // Sync with global key changes
-  useEffect(() => {
-    setApiKey(savedApiKey);
-  }, [savedApiKey]);
+  if (savedApiKey !== prevSavedApiKey) {
+    setPrevSavedApiKey(savedApiKey);
+    setDraftApiKey(savedApiKey);
+  }
 
-  const handleSaveApiKey = (type?: import("../contexts/GeminiApiKeyContext").StorageType) => {
-    saveApiKey(apiKey.trim(), type);
+  const handleSaveApiKey = (type?: StorageType) => {
+    saveApiKey(draftApiKey.trim(), type);
   };
 
   const handleRemoveApiKey = () => {
     removeApiKey();
-    setApiKey("");
+    setDraftApiKey("");
   };
 
   // 이미지 드래그앤드롭 핸들러
@@ -147,9 +149,9 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
     setParsedItems([]);
 
     try {
-      if (apiKey.trim()) {
+      if (savedApiKey.trim()) {
         // Gemini API로 분석
-        const result = await parseWithGemini(apiKey.trim(), textInput);
+        const result = await parseWithGemini(savedApiKey.trim(), textInput);
         setParsedItems(result);
       } else {
         // 로컬 키워드 분석
@@ -174,7 +176,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
       return;
     }
 
-    if (!apiKey.trim()) {
+    if (!savedApiKey.trim()) {
       setAnalysisError("이미지 분석(OCR/AI)은 Gemini API Key 등록이 필요합니다. 우측 상단 설정을 눌러 Key를 입력해 주세요.");
       return;
     }
@@ -184,7 +186,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
     setParsedItems([]);
 
     try {
-      const result = await parseWithGemini(apiKey.trim(), undefined, selectedFile);
+      const result = await parseWithGemini(savedApiKey.trim(), undefined, selectedFile);
       if (result.length === 0) {
         setAnalysisError("이미지에서 지출 내역을 추출하지 못했습니다.");
       } else {
@@ -260,9 +262,9 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
         </div>
 
         <ApiKeySettings
-          apiKey={apiKey}
+          apiKey={draftApiKey}
           storageType={savedStorageType}
-          onChange={setApiKey}
+          onChange={setDraftApiKey}
           onSave={handleSaveApiKey}
           onRemove={handleRemoveApiKey}
         />
@@ -355,7 +357,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
             />
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-slate-400">
-                {apiKey.trim()
+                {savedApiKey.trim()
                   ? "✨ Gemini AI 분석기가 텍스트를 문맥 분석합니다."
                   : "💡 API Key 미등록 시, 기본 키워드 매칭 규칙으로 간단 파싱합니다."}
               </span>
@@ -448,7 +450,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
                 </div>
               </div>
             )}
-            {!apiKey.trim() && (
+            {!savedApiKey.trim() && (
               <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3.5 text-[11px] text-amber-800 leading-relaxed">
                 <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>

@@ -1,22 +1,12 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
+import {
+  type StorageType,
+  type GeminiApiKeyContextType,
+  STORAGE_KEY,
+  GeminiApiKeyContext,
+} from "./geminiApiKeyContextDef";
 
-export type StorageType = "session" | "local";
-
-interface GeminiApiKeyContextType {
-  apiKey: string;
-  storageType: StorageType;
-  saveApiKey: (key: string, type?: StorageType) => void;
-  removeApiKey: () => void;
-}
-
-const STORAGE_KEY = "gemini_api_key";
-
-const GeminiApiKeyContext = createContext<GeminiApiKeyContextType>({
-  apiKey: "",
-  storageType: "session",
-  saveApiKey: () => {},
-  removeApiKey: () => {},
-});
+export type { StorageType, GeminiApiKeyContextType };
 
 function getInitialState(): { key: string; type: StorageType } {
   try {
@@ -103,8 +93,4 @@ export function GeminiApiKeyProvider({ children }: { children: ReactNode }) {
       {children}
     </GeminiApiKeyContext.Provider>
   );
-}
-
-export function useGeminiApiKey() {
-  return useContext(GeminiApiKeyContext);
 }

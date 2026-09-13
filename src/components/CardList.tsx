@@ -4,7 +4,7 @@ import { formatWon } from "@/lib/format";
 import { getCardAdvice, type CardAdviceMap } from "@/lib/cardAdvice";
 import type { Category, CardType } from "@/types/card";
 import type { CardEvaluation } from "@/types/recommendation";
-import { useGeminiApiKey } from "@/contexts/GeminiApiKeyContext";
+import { useGeminiApiKey } from "@/hooks/useGeminiApiKey";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface CardListProps {
