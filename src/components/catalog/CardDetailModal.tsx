@@ -10,11 +10,13 @@ interface CardDetailModalProps {
 }
 
 export function CardDetailModal({ entry, onClose, inMyCards, onToggleMyCards }: CardDetailModalProps) {
+  const [prevEntry, setPrevEntry] = useState(entry);
   const [imgError, setImgError] = useState(false);
 
-  useEffect(() => {
+  if (entry !== prevEntry) {
+    setPrevEntry(entry);
     setImgError(false);
-  }, [entry]);
+  }
 
   useEffect(() => {
     if (!entry) return;
