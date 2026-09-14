@@ -2,6 +2,7 @@ import { useState, lazy, Suspense } from "react";
 import { useMyCards } from "@/lib/myCards";
 import { CatalogGallery } from "@/components/catalog/CatalogGallery";
 import { GeminiApiKeyProvider } from "@/contexts/GeminiApiKeyContext";
+import { ToastProvider } from "@/contexts/ToastContext";
 
 const MyCardsPage = lazy(() =>
   import("@/components/catalog/MyCardsPage").then((m) => ({ default: m.MyCardsPage })),
@@ -92,8 +93,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <GeminiApiKeyProvider>
-      <AppContent />
-    </GeminiApiKeyProvider>
+    <ToastProvider>
+      <GeminiApiKeyProvider>
+        <AppContent />
+      </GeminiApiKeyProvider>
+    </ToastProvider>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AlertCircle, Check, Plus, Trash2 } from "lucide-react";
 import type { Category } from "@/types/card";
 import type { ParsedSpendingItem } from "@/lib/importerParser";
+import { useToast } from "@/hooks/useToast";
 
 type ImportMode = "merge" | "overwrite";
 
@@ -37,6 +38,7 @@ export function ParsedItemsTable({
 }: ParsedItemsTableProps) {
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const [validationError, setValidationError] = useState<string | null>(null);
+  const toast = useToast();
 
   const hasRefund = items.some((item) => item.amount < 0);
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
@@ -89,13 +91,17 @@ export function ParsedItemsTable({
   const handleApplyClick = () => {
     const emptyMerchantIdx = items.findIndex((item) => !item.merchant.trim());
     if (emptyMerchantIdx !== -1) {
-      setValidationError(`${emptyMerchantIdx + 1}번째 항목의 가맹점명을 입력해 주세요.`);
+      const msg = `${emptyMerchantIdx + 1}번째 항목의 가맹점명을 입력해 주세요.`;
+      setValidationError(msg);
+      toast.warning(msg);
       return;
     }
 
     const invalidAmountIdx = items.findIndex((item) => item.amount === 0);
     if (invalidAmountIdx !== -1) {
-      setValidationError(`${invalidAmountIdx + 1}번째 항목의 금액을 0원 초과하여 입력해 주세요.`);
+      const msg = `${invalidAmountIdx + 1}번째 항목의 금액을 0원 초과하여 입력해 주세요.`;
+      setValidationError(msg);
+      toast.warning(msg);
       return;
     }
 

@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MyCardsPage } from "@/components/catalog/MyCardsPage";
+import { ToastProvider } from "@/contexts/ToastContext";
 import * as myCardsModule from "@/lib/myCards";
 
 describe("MyCardsPage Component", () => {
@@ -25,14 +26,22 @@ describe("MyCardsPage Component", () => {
       has: vi.fn(() => false),
     };
 
-    render(<MyCardsPage myCards={emptyMyCards} />);
+    render(
+      <ToastProvider>
+        <MyCardsPage myCards={emptyMyCards} />
+      </ToastProvider>
+    );
 
     expect(screen.getByText("아직 담아둔 카드가 없습니다.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /백업 파일 불러오기/ })).toBeInTheDocument();
   });
 
   it("카드가 있을 때 카드 목록과 상단 백업/불러오기 버튼이 렌더링되어야 한다", () => {
-    render(<MyCardsPage myCards={mockMyCards} />);
+    render(
+      <ToastProvider>
+        <MyCardsPage myCards={mockMyCards} />
+      </ToastProvider>
+    );
 
     expect(screen.getByRole("heading", { name: "내 카드" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /백업 다운로드/ })).toBeInTheDocument();
@@ -42,17 +51,25 @@ describe("MyCardsPage Component", () => {
   it("백업 다운로드 버튼 클릭 시 downloadMyCardsBackup이 호출되어야 한다", () => {
     const spyDownload = vi.spyOn(myCardsModule, "downloadMyCardsBackup").mockImplementation(() => {});
 
-    render(<MyCardsPage myCards={mockMyCards} />);
+    render(
+      <ToastProvider>
+        <MyCardsPage myCards={mockMyCards} />
+      </ToastProvider>
+    );
 
     const downloadBtn = screen.getByRole("button", { name: /백업 다운로드/ });
     fireEvent.click(downloadBtn);
 
     expect(spyDownload).toHaveBeenCalledWith(mockMyCards.ids);
-    expect(screen.getByRole("alert")).toHaveTextContent("내 카드 목록 백업 파일이 다운로드되었습니다.");
+    expect(screen.getByRole("status")).toHaveTextContent("내 카드 목록 백업 파일이 다운로드되었습니다.");
   });
 
   it("유효한 JSON 파일 업로드 시 importIds가 호출되고 성공 토스트가 표시되어야 한다", async () => {
-    render(<MyCardsPage myCards={mockMyCards} />);
+    render(
+      <ToastProvider>
+        <MyCardsPage myCards={mockMyCards} />
+      </ToastProvider>
+    );
 
     const fileInput = screen.getByTestId("my-cards-file-input") as HTMLInputElement;
     const validJson = JSON.stringify({
@@ -68,13 +85,17 @@ describe("MyCardsPage Component", () => {
 
     await waitFor(() => {
       expect(mockMyCards.importIds).toHaveBeenCalledWith([10, 20], "merge");
-      const alert = screen.getByRole("alert");
-      expect(alert).toHaveTextContent("성공적으로 불러왔습니다");
+      const status = screen.getByRole("status");
+      expect(status).toHaveTextContent("성공적으로 불러왔습니다");
     });
   });
 
   it("잘못된 JSON 파일 업로드 시 스키마 검증 실패 및 에러 토스트가 표시되어야 한다", async () => {
-    render(<MyCardsPage myCards={mockMyCards} />);
+    render(
+      <ToastProvider>
+        <MyCardsPage myCards={mockMyCards} />
+      </ToastProvider>
+    );
 
     const fileInput = screen.getByTestId("my-cards-file-input") as HTMLInputElement;
     const invalidJson = JSON.stringify({ wrongField: "notValid" });
