@@ -1,9 +1,10 @@
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef } from "react";
 import type { CatalogEntry } from "@/types/catalog";
 import { useMyCards, downloadMyCardsBackup, parseAndValidateMyCardsBackup } from "@/lib/myCards";
 import { catalogCards } from "@/lib/loadCatalog";
 import { formatWon } from "@/lib/format";
 import { CardDetailModal } from "@/components/catalog/CardDetailModal";
+import { useToast } from "@/hooks/useToast";
 
 interface MyCardsPageProps {
   myCards: ReturnType<typeof useMyCards>;
@@ -11,16 +12,8 @@ interface MyCardsPageProps {
 
 export function MyCardsPage({ myCards }: MyCardsPageProps) {
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => {
-      setToast(null);
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   const entries = useMemo(() => {
     const idSet = new Set(myCards.ids);
@@ -32,11 +25,11 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
 
   const handleBackupDownload = () => {
     if (myCards.ids.length === 0) {
-      setToast({ type: "error", message: "백업할 카드가 없습니다." });
+      toast.error("백업할 카드가 없습니다.");
       return;
     }
     downloadMyCardsBackup(myCards.ids);
-    setToast({ type: "success", message: "내 카드 목록 백업 파일이 다운로드되었습니다." });
+    toast.success("내 카드 목록 백업 파일이 다운로드되었습니다.");
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,16 +40,13 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
       const text = await file.text();
       const result = parseAndValidateMyCardsBackup(text);
       if (!result.success) {
-        setToast({ type: "error", message: result.error });
+        toast.error(result.error);
       } else {
         const added = myCards.importIds(result.cardIds, "merge");
-        setToast({
-          type: "success",
-          message: `카드 ${result.count}장을 성공적으로 불러왔습니다. (신규 추가: ${added}장)`,
-        });
+        toast.success(`카드 ${result.count}장을 성공적으로 불러왔습니다. (신규 추가: ${added}장)`);
       }
     } catch {
-      setToast({ type: "error", message: "파일을 읽는 도중 오류가 발생했습니다." });
+      toast.error("파일을 읽는 도중 오류가 발생했습니다.");
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -74,31 +64,6 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
         data-testid="my-cards-file-input"
         onChange={handleFileUpload}
       />
-
-      {toast && (
-        <div
-          role="alert"
-          aria-live="polite"
-          className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm shadow-sm transition ${
-            toast.type === "success"
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border border-rose-200 bg-rose-50 text-rose-800"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <span>{toast.type === "success" ? "✓" : "⚠️"}</span>
-            <p className="font-medium">{toast.message}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setToast(null)}
-            className="ml-3 text-xs font-semibold opacity-70 hover:opacity-100"
-            aria-label="알림 닫기"
-          >
-            ✕
-          </button>
-        </div>
-      )}
 
       {entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center">

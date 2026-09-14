@@ -10,6 +10,7 @@ import type { Category } from "@/types/card";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { ParsedItemsTable } from "@/components/ParsedItemsTable";
 import { useGeminiApiKey } from "@/hooks/useGeminiApiKey";
+import { useToast } from "@/hooks/useToast";
 import type { StorageType } from "@/contexts/geminiApiKeyContextDef";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -40,6 +41,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
   const [isDragOver, setIsDragOver] = useState(false);
 
   const { apiKey: savedApiKey, storageType: savedStorageType, saveApiKey, removeApiKey } = useGeminiApiKey();
+  const toast = useToast();
   const [draftApiKey, setDraftApiKey] = useState(savedApiKey);
   const [prevSavedApiKey, setPrevSavedApiKey] = useState(savedApiKey);
 
@@ -50,11 +52,13 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
 
   const handleSaveApiKey = (type?: StorageType) => {
     saveApiKey(draftApiKey.trim(), type);
+    toast.success("Gemini API Key가 안전하게 저장되었습니다.");
   };
 
   const handleRemoveApiKey = () => {
     removeApiKey();
     setDraftApiKey("");
+    toast.info("Gemini API Key가 삭제되었습니다.");
   };
 
   // 이미지 드래그앤드롭 핸들러
@@ -241,6 +245,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
       return;
     }
     onImport(parsedItems, importMode);
+    toast.success(`지출 내역 ${parsedItems.length}건이 시뮬레이터에 성공적으로 반영되었습니다.`);
     // 상태 초기화
     setParsedItems([]);
     setTextInput("");
