@@ -1,17 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CatalogEntry } from "@/types/catalog";
 import { formatWon } from "@/lib/format";
 
 interface CardDetailModalProps {
   entry: CatalogEntry | null;
   onClose: () => void;
-  inMyCards: boolean;
-  onToggleMyCards: (entry: CatalogEntry) => void;
+  inMyCards?: boolean;
+  onToggleMyCards?: (entry: CatalogEntry) => void;
 }
 
-export function CardDetailModal({ entry, onClose, inMyCards, onToggleMyCards }: CardDetailModalProps) {
+export function CardDetailModal({
+  entry,
+  onClose,
+  inMyCards = false,
+  onToggleMyCards = () => {},
+}: CardDetailModalProps) {
   const [prevEntry, setPrevEntry] = useState(entry);
   const [imgError, setImgError] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const prevActiveElementRef = useRef<HTMLElement | null>(null);
 
   if (entry !== prevEntry) {
     setPrevEntry(entry);
@@ -20,14 +27,72 @@ export function CardDetailModal({ entry, onClose, inMyCards, onToggleMyCards }: 
 
   useEffect(() => {
     if (!entry) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKey);
+
+    // 모달 활성화 전 포커스 위치 보관 (Focus Restoration)
+    prevActiveElementRef.current = document.activeElement as HTMLElement | null;
+
+    // 배경 스크롤 차단 및 이전 스타일 저장
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    // 첫 번째 포커스 가능한 요소로 자동 포커스
+    const focusTimer = setTimeout(() => {
+      if (!dialogRef.current) return;
+      const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]):not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length > 0) {
+        focusables[0].focus();
+      }
+    }, 0);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape 키 입력 시 모달 닫기
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+
+      // Tab 키 입력 시 포커스 트랩(Focus Trap) 순환 제어
+      if (e.key === "Tab") {
+        if (!dialogRef.current) return;
+        const focusables = Array.from(
+          dialogRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]):not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])'
+          )
+        );
+
+        if (focusables.length === 0) {
+          e.preventDefault();
+          return;
+        }
+
+        const firstElement = focusables[0];
+        const lastElement = focusables[focusables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement || !dialogRef.current.contains(document.activeElement)) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement || !dialogRef.current.contains(document.activeElement)) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
     return () => {
-      window.removeEventListener("keydown", handleKey);
-      document.body.style.overflow = "";
+      clearTimeout(focusTimer);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+      // 모달 종료 시 이전 활성 요소로 포커스 복원
+      prevActiveElementRef.current?.focus?.();
     };
   }, [entry, onClose]);
 
@@ -36,13 +101,16 @@ export function CardDetailModal({ entry, onClose, inMyCards, onToggleMyCards }: 
 
   return (
     <dialog
+      ref={dialogRef}
       open
+      aria-modal="true"
       aria-labelledby="card-modal-title"
       className="fixed inset-0 z-50 m-0 flex h-full w-full max-h-none max-w-none items-center justify-center border-none bg-transparent p-4 animate-[fadeIn_0.15s_ease-out]"
     >
       <button
         type="button"
         aria-label="대화상자 닫기"
+        aria-hidden="true"
         tabIndex={-1}
         onClick={onClose}
         className="fixed inset-0 h-full w-full bg-slate-900/50 backdrop-blur-sm -z-10 cursor-default border-none"
