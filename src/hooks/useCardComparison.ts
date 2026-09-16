@@ -18,26 +18,21 @@ export function useCardComparison() {
 
   const toggleCard = useCallback(
     (entry: CatalogEntry): boolean => {
-      let isSuccess = false;
-      setSelectedCards((prev) => {
-        const exists = prev.some((c) => c.sourceId === entry.sourceId);
-        if (exists) {
-          isSuccess = true;
-          return prev.filter((c) => c.sourceId !== entry.sourceId);
-        }
+      const exists = selectedCards.some((c) => c.sourceId === entry.sourceId);
+      if (exists) {
+        setSelectedCards((prev) => prev.filter((c) => c.sourceId !== entry.sourceId));
+        return true;
+      }
 
-        if (prev.length >= MAX_COMPARE_COUNT) {
-          toast.warning(`비교할 카드는 최대 ${MAX_COMPARE_COUNT}장까지 선택할 수 있습니다.`);
-          isSuccess = false;
-          return prev;
-        }
+      if (selectedCards.length >= MAX_COMPARE_COUNT) {
+        toast.warning(`비교할 카드는 최대 ${MAX_COMPARE_COUNT}장까지 선택할 수 있습니다.`);
+        return false;
+      }
 
-        isSuccess = true;
-        return [...prev, entry];
-      });
-      return isSuccess;
+      setSelectedCards((prev) => [...prev, entry]);
+      return true;
     },
-    [toast],
+    [selectedCards, toast],
   );
 
   const removeCard = useCallback((sourceId: number) => {
