@@ -4,7 +4,10 @@ import { catalogCards, catalogIssuers, catalogTypes, isInfoInsufficient } from "
 import type { useMyCards } from "@/lib/myCards";
 import { CatalogCardTile } from "@/components/catalog/CatalogCardTile";
 import { CardDetailModal } from "@/components/catalog/CardDetailModal";
+import { CardComparisonDrawer } from "@/components/catalog/CardComparisonDrawer";
+import { CardComparisonModal } from "@/components/catalog/CardComparisonModal";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useCardComparison } from "@/hooks/useCardComparison";
 
 const PAGE_SIZE = 24;
 
@@ -22,6 +25,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
   const [hideInsufficient, setHideInsufficient] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
+  const comparison = useCardComparison();
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -223,6 +227,8 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
                 onSelect={setSelected}
                 inMyCards={myCards.has(entry.sourceId)}
                 onToggleMyCards={(e) => myCards.toggle(e.sourceId)}
+                isCompared={comparison.isSelected(entry.sourceId)}
+                onToggleCompare={comparison.toggleCard}
               />
             ))}
           </div>
@@ -249,12 +255,30 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
         onToggleMyCards={(e) => myCards.toggle(e.sourceId)}
       />
 
+      <CardComparisonDrawer
+        selectedCards={comparison.selectedCards}
+        onRemoveCard={comparison.removeCard}
+        onClear={comparison.clear}
+        onOpenModal={comparison.openModal}
+      />
+
+      <CardComparisonModal
+        isOpen={comparison.isModalOpen}
+        cards={comparison.selectedCards}
+        onClose={comparison.closeModal}
+        inMyCards={(id) => myCards.has(id)}
+        onToggleMyCards={(e) => myCards.toggle(e.sourceId)}
+        onRemoveCard={comparison.removeCard}
+      />
+
       {visibleCount > PAGE_SIZE && (
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           aria-label="맨 위로 이동"
-          className="fixed bottom-6 right-6 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className={`fixed right-6 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition-all hover:bg-indigo-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
+            comparison.count > 0 ? "bottom-28 sm:bottom-24" : "bottom-6"
+          }`}
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" />
