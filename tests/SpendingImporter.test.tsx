@@ -20,6 +20,7 @@ describe("SpendingImporter and SimulatorPage ErrorBoundary integration", () => {
 
     expect(screen.getByText("외부 지출 내역 가져오기")).toBeInTheDocument();
     expect(screen.getByText("체험용 데모")).toBeInTheDocument();
+    expect(screen.getByText("CSV 명세서")).toBeInTheDocument();
     expect(screen.getByText("결제 내역 텍스트")).toBeInTheDocument();
     expect(screen.getByText("영수증 이미지")).toBeInTheDocument();
   });
@@ -220,6 +221,99 @@ describe("SpendingImporter and SimulatorPage ErrorBoundary integration", () => {
       fireEvent.click(deleteSelectedBtn);
 
       expect(screen.queryByText(/지출 파싱 결과 미리보기/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("카드사 결제 내역 CSV 파일 업로드 및 파싱 연동", () => {
+    it("CSV 명세서 탭에서 자동 인식 카드사 안내 및 드롭존이 렌더링되어야 한다", () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+      const csvTabButton = screen.getByRole("button", { name: "CSV 명세서" });
+      fireEvent.click(csvTabButton);
+
+      expect(screen.getByText("카드사 결제 내역 CSV 파일 업로드")).toBeInTheDocument();
+      expect(screen.getByText(/최대 5MB, UTF-8 및 EUC-KR\(CP949\) 인코딩 자동 감지/)).toBeInTheDocument();
+      expect(screen.getByText("신한")).toBeInTheDocument();
+      expect(screen.getByText("현대")).toBeInTheDocument();
+      expect(screen.getByText("삼성")).toBeInTheDocument();
+      expect(screen.getByText("KB국민")).toBeInTheDocument();
+    });
+
+    it("5MB를 초과하는 CSV 파일 업로드 시 에러 메시지를 표시한다", () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+      const csvTabButton = screen.getByRole("button", { name: "CSV 명세서" });
+      fireEvent.click(csvTabButton);
+
+      const largeCsv = new File(["dummy"], "large.csv", { type: "text/csv" });
+      Object.defineProperty(largeCsv, "size", { value: 6 * 1024 * 1024 }); // 6MB
+
+      const input = screen.getByLabelText("CSV 명세서 파일 선택");
+      fireEvent.change(input, { target: { files: [largeCsv] } });
+
+      expect(screen.getByText("CSV 파일 크기는 최대 5MB 이하만 업로드 가능합니다.")).toBeInTheDocument();
+    });
+
+    it("정상 CSV 파일을 업로드하고 파싱 실행 시 미리보기 테이블에 항목이 표시되고 시뮬레이터에 적용된다", async () => {
+      const handleImport = vi.fn();
+      render(<SpendingImporter categories={mockCategories} onImport={handleImport} />);
+
+      const csvTabButton = screen.getByRole("button", { name: "CSV 명세서" });
+      fireEvent.click(csvTabButton);
+
+      const csvContent = `이용일자,가맹점명,이용금액,승인구분
+2026-09-10,스타벅스 강남점,5000,승인
+2026-09-11,이마트 역삼점,32000,승인
+2026-09-12,스타벅스 강남점,5000,승인취소`;
+
+      const validCsvFile = new File([csvContent], "card-history.csv", { type: "text/csv" });
+      Object.defineProperty(validCsvFile, "size", { value: 2048 });
+
+      const input = screen.getByLabelText("CSV 명세서 파일 선택");
+      fireEvent.change(input, { target: { files: [validCsvFile] } });
+
+      expect(screen.getByText("파일 준비됨: card-history.csv")).toBeInTheDocument();
+
+      const analyzeBtn = screen.getByRole("button", { name: /CSV 분석 시작/ });
+      fireEvent.click(analyzeBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText("지출 파싱 결과 미리보기 (3건)")).toBeInTheDocument();
+      });
+
+      // 환불/취소 태그 노출 확인
+      expect(screen.getByText("환불/취소")).toBeInTheDocument();
+
+      // 시뮬레이터에 적용 클릭
+      const applyBtn = screen.getByRole("button", { name: /지출 시뮬레이터에 적용/ });
+      fireEvent.click(applyBtn);
+
+      expect(handleImport).toHaveBeenCalledWith(
+        [
+          { merchant: "스타벅스 강남점", amount: 5000, category: "cafe" },
+          { merchant: "이마트 역삼점", amount: 32000, category: "mart" },
+          { merchant: "스타벅스 강남점", amount: -5000, category: "cafe" },
+        ],
+        "merge"
+      );
+    });
+
+    it("체험용 데모 탭에서 카드사 CSV 명세서 데모를 실행하면 모의 5건 데이터가 표시된다", async () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+
+      const demoTabButton = screen.getByRole("button", { name: /체험용 데모/ });
+      fireEvent.click(demoTabButton);
+
+      const csvDemoBtn = screen.getByRole("button", { name: /카드사 CSV 명세서/ });
+      fireEvent.click(csvDemoBtn);
+
+      await waitFor(
+        () => {
+          expect(screen.getByText("지출 파싱 결과 미리보기 (5건)")).toBeInTheDocument();
+        },
+        { timeout: 2500 }
+      );
+
+      expect(screen.getByDisplayValue("스타벅스 강남점(취소)")).toBeInTheDocument();
+      expect(screen.getByText("환불/취소")).toBeInTheDocument();
     });
   });
 });
