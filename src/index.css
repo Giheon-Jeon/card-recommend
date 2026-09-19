@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -33,6 +35,14 @@
 ::-webkit-scrollbar-thumb {
   background-color: #cbd5e1;
   border-radius: 9999px;
+}
+
+.dark * {
+  scrollbar-color: #475569 transparent;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #475569;
 }
 
 .line-clamp-2 {
