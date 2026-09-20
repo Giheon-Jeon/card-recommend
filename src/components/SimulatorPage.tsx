@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { rankCards, bestCardPerCategory } from "@/lib/recommender";
+import { recommendPortfolios } from "@/lib/portfolioRecommender";
 import { catalogCards, isInfoInsufficient, categories } from "@/lib/loadCatalog";
 import { catalogEntryToCard } from "@/lib/cardConverter";
 import type { useMyCards } from "@/lib/myCards";
@@ -60,10 +61,18 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
     () => bestCardPerCategory(filteredCards, spending, categories.map((c) => c.id)),
     [filteredCards, spending],
   );
+  const portfolioResult = useMemo(
+    () => recommendPortfolios(filteredCards, spending),
+    [filteredCards, spending],
+  );
   const rankedForDisplay = useMemo(
     () => (scope === "all" ? ranked.slice(0, ALL_CARDS_DISPLAY_LIMIT) : ranked),
     [ranked, scope],
   );
+
+  const handleAddPortfolioCards = (sourceIds: number[]) => {
+    myCards.importIds(sourceIds, "merge");
+  };
 
   const showEmptyState = scope === "myCards" && myCards.ids.length === 0;
 
@@ -139,7 +148,14 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
             onChange={updateCategory}
             onReset={resetSpending}
           />
-          <RecommendationResult ranked={ranked} categoryWinners={categoryWinners} categories={categories} />
+          <RecommendationResult
+            ranked={ranked}
+            categoryWinners={categoryWinners}
+            categories={categories}
+            portfolioResult={portfolioResult}
+            myCardIds={myCards.ids}
+            onAddCards={handleAddPortfolioCards}
+          />
           <CardList
             evaluations={rankedForDisplay}
             cardTypes={cardTypes}
