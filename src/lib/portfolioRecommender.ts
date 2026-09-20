@@ -37,6 +37,7 @@ export function evaluateCombination(
   cards: Card[],
   spending: SpendingProfile,
   singleBestNetBenefit = 0,
+  ratesLookup?: Map<string, Record<string, { rate: number; capPerMonth?: number }>>,
 ): PortfolioRecommendation | null {
   const activeEntries = Object.entries(spending).filter(([, amount]) => (amount || 0) > 0);
   if (activeEntries.length === 0 || cards.length < 2) {
@@ -59,10 +60,15 @@ export function evaluateCombination(
 
   for (const [category, spend] of activeEntries) {
     const ratedCards = cards
-      .map((card) => ({
-        card,
-        ...getCardBestBenefit(card, category),
-      }))
+      .map((card) => {
+        const benefit = ratesLookup
+          ? (ratesLookup.get(card.id)?.[category] ?? getCardBestBenefit(card, category))
+          : getCardBestBenefit(card, category);
+        return {
+          card,
+          ...benefit,
+        };
+      })
       .sort((a, b) => b.rate - a.rate);
 
     const best = ratedCards[0];
@@ -286,6 +292,16 @@ export function recommendPortfolios(
   const candidates = getCandidatePool(cards, spending, options?.candidateLimit ?? 16);
   const n = candidates.length;
 
+  // 후보군 카드별 카테고리 혜택을 사전 계산하여 반복 연산 비용 최소화
+  const ratesLookup = new Map<string, Record<string, { rate: number; capPerMonth?: number }>>();
+  for (const c of candidates) {
+    const rateMap: Record<string, { rate: number; capPerMonth?: number }> = {};
+    for (const [cat] of activeEntries) {
+      rateMap[cat] = getCardBestBenefit(c, cat);
+    }
+    ratesLookup.set(c.id, rateMap);
+  }
+
   let bestPair: PortfolioRecommendation | null = null;
   let bestTrio: PortfolioRecommendation | null = null;
 
@@ -293,7 +309,7 @@ export function recommendPortfolios(
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
       const combo = [candidates[i], candidates[j]];
-      const evaluation = evaluateCombination(combo, spending, singleBestNet);
+      const evaluation = evaluateCombination(combo, spending, singleBestNet, ratesLookup);
       if (!evaluation) continue;
 
       if (!bestPair || isBetterPortfolio(evaluation, bestPair)) {
@@ -308,7 +324,7 @@ export function recommendPortfolios(
       for (let j = i + 1; j < n; j++) {
         for (let k = j + 1; k < n; k++) {
           const combo = [candidates[i], candidates[j], candidates[k]];
-          const evaluation = evaluateCombination(combo, spending, singleBestNet);
+          const evaluation = evaluateCombination(combo, spending, singleBestNet, ratesLookup);
           if (!evaluation) continue;
 
           if (!bestTrio || isBetterPortfolio(evaluation, bestTrio)) {
