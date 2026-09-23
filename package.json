@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
+    "fetch:catalog": "tsx scripts/fetchCardCatalog.ts",
     "validate:cards": "tsx scripts/validateCardData.ts"
   },
   "dependencies": {
