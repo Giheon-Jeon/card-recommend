@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Category, SpendingProfile } from "@/types/card";
+import type { ParsedSpendingItem } from "@/lib/importerParser";
 
 export const SPENDING_STORAGE_KEY = "card-recommend:spending-profile";
 
@@ -108,10 +109,33 @@ export function useSpendingProfile(categories: Category[]) {
     writeStoredSpending(initial);
   }, [categories]);
 
+  const applyImportedItems = useCallback(
+    (items: ParsedSpendingItem[], mode: "merge" | "overwrite") => {
+      setSpendingState((prev) => {
+        const next = mode === "overwrite" ? getInitialSpending(categories) : { ...prev };
+        items.forEach((item) => {
+          if (next[item.category] !== undefined) {
+            next[item.category] += item.amount;
+          } else {
+            next["etc"] = (next["etc"] || 0) + item.amount;
+          }
+        });
+        // 환불/취소 내역으로 인해 음수가 되지 않도록 최소 0원 하한 보정
+        Object.keys(next).forEach((key) => {
+          next[key] = Math.max(0, Math.floor(next[key]));
+        });
+        writeStoredSpending(next);
+        return next;
+      });
+    },
+    [categories],
+  );
+
   return {
     spending,
     updateCategory,
     setSpending,
     resetSpending,
+    applyImportedItems,
   };
 }
