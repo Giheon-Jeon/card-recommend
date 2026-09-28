@@ -8,6 +8,11 @@ import {
 
 export type { StorageType, GeminiApiKeyContextType };
 
+/**
+ * [Issue #62] Gemini API 키 전역 상태 관리 프로바이더
+ * 세션 스토리지(권장) 및 로컬 스토리지 분기 저장을 지원하여
+ * API 키 유출 위험을 최소화하고 화면 간 상태를 안전하게 공유합니다.
+ */
 function getInitialState(): { key: string; type: StorageType } {
   try {
     const sessionKey = sessionStorage.getItem(STORAGE_KEY)?.trim();

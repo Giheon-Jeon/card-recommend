@@ -15,7 +15,9 @@ export interface ErrorFallbackProps {
 }
 
 /**
- * 에러 발생 시 사용자에게 노출되는 폴백 UI 컴포넌트
+ * [Issue #62] React 19 호환 에러 바운더리 컴포넌트
+ * Gemini Vision AI 등 외부 비동기 분석 실패나 렌더링 예외가 발생하더라도
+ * 전체 시뮬레이터 애플리케이션의 크래시를 방지하고 사용자 친화적인 복구 UI를 제공합니다.
  */
 export function ErrorFallback({
   error,

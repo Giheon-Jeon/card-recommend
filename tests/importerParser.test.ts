@@ -205,5 +205,17 @@ describe("validateImageFile", () => {
     const webpFile = new File(["webp"], "photo.webp", { type: "application/octet-stream" });
     expect(validateImageFile(webpFile).isValid).toBe(true);
   });
+
+  it("62번 이슈 명세인 5MB 제한 옵션을 적용하면 5MB 초과 파일을 올바르게 차단한다", () => {
+    const valid5MbFile = new File(["dummy"], "receipt.jpg", { type: "image/jpeg" });
+    Object.defineProperty(valid5MbFile, "size", { value: 5 * 1024 * 1024 });
+    expect(validateImageFile(valid5MbFile, 5 * 1024 * 1024).isValid).toBe(true);
+
+    const exceed5MbFile = new File(["dummy"], "receipt.jpg", { type: "image/jpeg" });
+    Object.defineProperty(exceed5MbFile, "size", { value: 5 * 1024 * 1024 + 1 });
+    const result = validateImageFile(exceed5MbFile, 5 * 1024 * 1024);
+    expect(result.isValid).toBe(false);
+    expect(result.error).toContain("최대 5MB");
+  });
 });
 
