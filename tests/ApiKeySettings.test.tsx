@@ -95,4 +95,24 @@ describe("ApiKeySettings", () => {
 
     expect(handleRemove).toHaveBeenCalledTimes(1);
   });
+
+  it("API 키 입력 시 공백이 포함되어 있어도 저장 시 정상적으로 trim 처리하여 호출한다", () => {
+    const handleSave = vi.fn();
+
+    render(
+      <ApiKeySettings
+        apiKey="  AIzaSyTrimTestKey  "
+        storageType="session"
+        onChange={vi.fn()}
+        onSave={handleSave}
+        onRemove={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Gemini AI (세션)"));
+    const saveButton = screen.getByRole("button", { name: "저장" });
+    fireEvent.click(saveButton);
+
+    expect(handleSave).toHaveBeenCalledWith("session");
+  });
 });
