@@ -11,7 +11,10 @@ interface ApiKeySettingsProps {
   onStorageTypeChange?: (type: StorageType) => void;
 }
 
-/** 지출 내역 가져오기 화면 우측 상단의 Gemini API Key 등록/해제 버튼과 팝오버. */
+/**
+ * [Issue #62] 지출 내역 가져오기 화면 우측 상단의 Gemini API Key 등록/해제 버튼과 팝오버 모달 컴포넌트.
+ * 세션 스토리지/로컬 스토리지 선택 저장 및 실시간 상태 피드백을 제공합니다.
+ */
 export function ApiKeySettings({
   apiKey,
   storageType = "session",
