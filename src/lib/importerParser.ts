@@ -131,8 +131,11 @@ export function parseTextLocally(text: string): ParsedSpendingItem[] {
 }
 
 /**
- * 업로드 허용 최대 이미지 크기 (10MB) 및 허용 포맷 정의
+ * [Issue #62] 업로드 허용 이미지 파일 크기 및 포맷 보안 검증 정의
+ * - 기본 5MB(Issue #62 명세) 및 확장 10MB 상한 지원
+ * - Gemini API 권장 포맷(JPG, PNG, WebP, HEIC) 화이트리스트 검증
  */
+export const ISSUE_62_MAX_IMAGE_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 export const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 export const ALLOWED_IMAGE_MIME_TYPES = [
   "image/jpeg",
@@ -156,14 +159,15 @@ export interface FileValidationResult {
 
 /**
  * 영수증 이미지 파일 크기 및 포맷 검증
- * - 최대 10MB 제한
+ * - 파일 크기 상한 검증 (기본 10MB, 이슈 명세에 따른 커스텀 크기 지원)
  * - Gemini API 권장 포맷 (JPG, PNG, WebP, HEIC) 화이트리스트 검증
  */
-export function validateImageFile(file: File): FileValidationResult {
-  if (file.size > MAX_IMAGE_FILE_SIZE) {
+export function validateImageFile(file: File, maxSizeBytes: number = MAX_IMAGE_FILE_SIZE): FileValidationResult {
+  if (file.size > maxSizeBytes) {
+    const sizeMb = Math.round(maxSizeBytes / (1024 * 1024));
     return {
       isValid: false,
-      error: "파일 크기는 최대 10MB 이하만 업로드 가능합니다.",
+      error: `파일 크기는 최대 ${sizeMb}MB 이하만 업로드 가능합니다.`,
     };
   }
 
