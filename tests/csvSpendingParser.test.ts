@@ -243,4 +243,38 @@ describe("csvSpendingParser 유틸리티 테스트", () => {
       expect(items[1].amount).toBe(1500);
     });
   });
+
+  describe("Issue #63 확장 카드사 포맷 및 취소/업종 처리", () => {
+    it("롯데/하나/농협/BC 형태의 승인금액(KRW) 및 매입상태 헤더를 자동 인식해야 한다", () => {
+      const csv = `거래일시,이용가맹점명,승인금액(KRW),매입상태,업종구분
+2026-09-15 12:30,파리바게뜨 강남역점,8500,정상,베이커리
+2026-09-16 14:20,교보문고 광화문점,25000,정상,서점
+2026-09-17 18:00,온누리약국,12000,반품,약국`;
+
+      const result = parseCsvContent(csv);
+      expect(result).toHaveLength(3);
+      expect(result[0]).toEqual({
+        merchant: "파리바게뜨 강남역점",
+        amount: 8500,
+        category: "cafe",
+      });
+      expect(result[1]).toEqual({
+        merchant: "교보문고 광화문점",
+        amount: 25000,
+        category: "culture",
+      });
+      expect(result[2]).toEqual({
+        merchant: "온누리약국",
+        amount: -12000,
+        category: "convenience",
+      });
+    });
+
+    it("부분환불, 전체취소, 카드취소 상태값을 올바르게 음수 금액으로 변환해야 한다", () => {
+      expect(parseAmountValue("15,000", "부분환불")).toBe(-15000);
+      expect(parseAmountValue("30,000", "전체취소")).toBe(-30000);
+      expect(parseAmountValue("45,000", "카드취소")).toBe(-45000);
+      expect(parseAmountValue("50,000", "정상승인")).toBe(50000);
+    });
+  });
 });

@@ -1,6 +1,15 @@
 import { KEYWORD_MAP, type ParsedSpendingItem } from "@/lib/importerParser";
 
 /**
+ * [Issue #63] 카드사 결제 내역 CSV 파일 업로드 및 자동 인코딩/카테고리 파싱
+ * - 브라우저 바이너리 버퍼 기반 UTF-8 및 EUC-KR(CP949) 문자열 자동 디코더
+ * - RFC 4180 호환 CSV 행/열 파서 및 따옴표/이스케이프 처리
+ * - 주요 카드사(신한, 현대, 삼성, KB국민, 롯데, 하나, 농협, BC 등) 명세서 헤더 자동 감지 및 매핑
+ * - 결제 취소 및 부분 환불 내역 음수 금액 변환
+ * - 키워드 및 업종명 사전 기반 소비 카테고리 자동 추론
+ */
+
+/**
  * 업로드 허용 최대 CSV 파일 크기 (5MB) 및 지원 파일 형식 정의
  */
 export const MAX_CSV_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -136,19 +145,19 @@ export function parseCsvRows(csvText: string): string[][] {
  * 카드사별 헤더 패턴 정의
  */
 const MERCHANT_HEADER_PATTERNS = [
-  /(가맹점명|가맹점|이용가맹점|이용처|사용처|상호명|내역|가맹점\(사용처\)|가맹점정보)/i,
+  /(가맹점명|가맹점|이용가맹점|이용처|사용처|상호명|내역|가맹점\(사용처\)|가맹점정보|이용가맹점명|상호)/i,
 ];
 
 const AMOUNT_HEADER_PATTERNS = [
-  /(이용금액\(원\)|이용금액|승인금액\(원\)|승인금액|결제금액|원금액|매출금액|금액)/i,
+  /(이용금액\(원\)|이용금액|승인금액\(원\)|승인금액|결제금액|원금액|매출금액|금액|승인금액\(krw\)|이용금액\(krw\)|청구금액|국내이용금액)/i,
 ];
 
 const STATUS_HEADER_PATTERNS = [
-  /(승인구분|처리상태|결제구분|매출구분|이용구분|거래구분|상태|구분)/i,
+  /(승인구분|처리상태|결제구분|매출구분|이용구분|거래구분|상태|구분|매입상태|승인상태)/i,
 ];
 
 const CATEGORY_HEADER_PATTERNS = [
-  /(가맹점업종|업종명|업종|카테고리|분류)/i,
+  /(가맹점업종|업종명|업종|카테고리|분류|업종구분)/i,
 ];
 
 export interface HeaderMapping {
@@ -220,7 +229,7 @@ export function parseAmountValue(rawVal: string, rawStatus?: string): number {
     (trimmedVal.startsWith("(") && trimmedVal.endsWith(")"));
 
   // 상태 컬럼에서 환불/취소 키워드 검출
-  const isRefundStatus = /(?:취소|환불|승인취소|부분취소|매출취소)/i.test(trimmedStatus);
+  const isRefundStatus = /(?:취소|환불|승인취소|부분취소|매출취소|반품|부분환불|전체취소|카드취소|매입취소)/i.test(trimmedStatus);
 
   // 숫자 및 소수점, 음수부호 외 문자 제거
   const cleanedNumStr = trimmedVal.replace(/[^\d.-]/g, "");
@@ -248,11 +257,14 @@ const SECTOR_CATEGORY_MAP: Record<string, string> = {
   제과점: "cafe",
   커피: "cafe",
   카페: "cafe",
+  베이커리: "cafe",
+  디저트: "cafe",
   // 마트 / 편의점
   슈퍼마켓: "mart",
   대형할인점: "mart",
   마트: "mart",
   편의점: "convenience",
+  약국: "convenience",
   // 교통
   대중교통: "transport",
   시내버스: "transport",
@@ -272,6 +284,7 @@ const SECTOR_CATEGORY_MAP: Record<string, string> = {
   영화: "culture",
   공연: "culture",
   극장: "culture",
+  서점: "culture",
   // 쇼핑
   전자상거래: "onlineShopping",
   인터넷쇼핑: "onlineShopping",
