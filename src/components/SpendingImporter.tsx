@@ -27,9 +27,10 @@ function toErrorMessage(err: unknown, fallback: string): string {
 }
 
 /**
- * [Issue #62] 스마트 지출 가져오기 및 분석 컴포넌트
+ * [Issue #62 & #63] 스마트 지출 가져오기 및 분석 컴포넌트
  * 결제 문자 텍스트, 영수증 캡처 이미지(OCR/Gemini Vision), 카드사 CSV 명세서를
  * 통합 분석하여 소비 카테고리별 정형 데이터로 변환하고 시뮬레이터에 적용합니다.
+ * - Issue #63: 카드사 CSV 명세서 업로드 및 드래그앤드롭, 인코딩 자동 감지 및 시뮬레이터 연동
  */
 export function SpendingImporter({ categories, onImport }: SpendingImporterProps) {
   const [activeTab, setActiveTab] = useState<TabType>("demo");
