@@ -62,6 +62,106 @@ describe("ParsedItemsTable 환불/취소 항목 렌더링", () => {
     fireEvent.change(amountInputs[1], { target: { value: "-6000" } });
     expect(handleUpdate).toHaveBeenCalledWith(1, "amount", -6000);
   });
+
+  it("가맹점명 인라인 수정 시 onUpdateItem이 호출되어야 한다", () => {
+    const handleUpdate = vi.fn();
+    render(
+      <ParsedItemsTable
+        categories={mockCategories}
+        items={mockItems}
+        onUpdateItem={handleUpdate}
+        onDeleteItem={vi.fn()}
+        importMode="merge"
+        onImportModeChange={vi.fn()}
+        onCancel={vi.fn()}
+        onApply={vi.fn()}
+      />
+    );
+
+    const merchantInputs = screen.getAllByLabelText("가맹점명");
+    fireEvent.change(merchantInputs[0], { target: { value: "이디야커피" } });
+    expect(handleUpdate).toHaveBeenCalledWith(0, "merchant", "이디야커피");
+  });
+
+  it("카테고리 셀렉트 박스 변경 시 onUpdateItem이 호출되어야 한다", () => {
+    const handleUpdate = vi.fn();
+    render(
+      <ParsedItemsTable
+        categories={mockCategories}
+        items={mockItems}
+        onUpdateItem={handleUpdate}
+        onDeleteItem={vi.fn()}
+        importMode="merge"
+        onImportModeChange={vi.fn()}
+        onCancel={vi.fn()}
+        onApply={vi.fn()}
+      />
+    );
+
+    const categorySelects = screen.getAllByLabelText("카테고리");
+    fireEvent.change(categorySelects[0], { target: { value: "mart" } });
+    expect(handleUpdate).toHaveBeenCalledWith(0, "category", "mart");
+  });
+
+  it("개별 삭제 버튼 클릭 시 onDeleteItem이 호출되어야 한다", () => {
+    const handleDelete = vi.fn();
+    render(
+      <ParsedItemsTable
+        categories={mockCategories}
+        items={mockItems}
+        onUpdateItem={vi.fn()}
+        onDeleteItem={handleDelete}
+        importMode="merge"
+        onImportModeChange={vi.fn()}
+        onCancel={vi.fn()}
+        onApply={vi.fn()}
+      />
+    );
+
+    const deleteButtons = screen.getAllByRole("button", { name: "항목 삭제" });
+    fireEvent.click(deleteButtons[0]);
+    expect(handleDelete).toHaveBeenCalledWith(0);
+  });
+
+  it("가져오기 모드(합산/덮어쓰기) 라디오 버튼 변경 시 onImportModeChange가 호출되어야 한다", () => {
+    const handleModeChange = vi.fn();
+    render(
+      <ParsedItemsTable
+        categories={mockCategories}
+        items={mockItems}
+        onUpdateItem={vi.fn()}
+        onDeleteItem={vi.fn()}
+        importMode="merge"
+        onImportModeChange={handleModeChange}
+        onCancel={vi.fn()}
+        onApply={vi.fn()}
+      />
+    );
+
+    const overwriteRadio = screen.getByLabelText("기존 값 덮어쓰기 (교체)");
+    fireEvent.click(overwriteRadio);
+    expect(handleModeChange).toHaveBeenCalledWith("overwrite");
+  });
+
+  it("취소 버튼 클릭 시 onCancel이 호출되어야 한다", () => {
+    const handleCancel = vi.fn();
+    render(
+      <ParsedItemsTable
+        categories={mockCategories}
+        items={mockItems}
+        onUpdateItem={vi.fn()}
+        onDeleteItem={vi.fn()}
+        importMode="merge"
+        onImportModeChange={vi.fn()}
+        onCancel={handleCancel}
+        onApply={vi.fn()}
+      />
+    );
+
+    const cancelBtn = screen.getByRole("button", { name: "취소" });
+    fireEvent.click(cancelBtn);
+    expect(handleCancel).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("ParsedItemsTable 직접 항목 추가 및 총액 요약 표시", () => {
