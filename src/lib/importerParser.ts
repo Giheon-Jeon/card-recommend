@@ -1,10 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { ParsedSpendingItem } from "@/types/importer";
 
-export interface ParsedSpendingItem {
-  merchant: string;
-  amount: number;
-  category: string; // convenience, cafe, transport, mobile, onlineShopping, mart, dining, culture, gas, etc
-}
+export type { ParsedSpendingItem };
 
 // 한국어 지출 카테고리 매핑 규칙
 export const KEYWORD_MAP: { [category: string]: string[] } = {

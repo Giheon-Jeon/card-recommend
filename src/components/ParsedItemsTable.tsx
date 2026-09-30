@@ -1,27 +1,9 @@
 import { useState } from "react";
 import { AlertCircle, Check, Plus, Trash2 } from "lucide-react";
-import type { Category } from "@/types/card";
-import type { ParsedSpendingItem } from "@/lib/importerParser";
+import type { ImportMode, ParsedItemsTableProps } from "@/types/importer";
 import { useToast } from "@/hooks/useToast";
 
-type ImportMode = "merge" | "overwrite";
-
-interface ParsedItemsTableProps {
-  categories: Category[];
-  items: ParsedSpendingItem[];
-  onUpdateItem: <K extends keyof ParsedSpendingItem>(
-    index: number,
-    field: K,
-    value: ParsedSpendingItem[K],
-  ) => void;
-  onDeleteItem: (index: number) => void;
-  onDeleteSelected?: (indices: number[]) => void;
-  onAddItem?: () => void;
-  importMode: ImportMode;
-  onImportModeChange: (mode: ImportMode) => void;
-  onCancel: () => void;
-  onApply: () => void;
-}
+export type { ImportMode, ParsedItemsTableProps };
 
 /** AI/로컬 분석 결과를 검토·수정하고 지출 시뮬레이터에 반영하기 전 보여주는 미리보기 테이블. */
 export function ParsedItemsTable({
