@@ -93,53 +93,110 @@ export function RecommendationResult({
       {activeTab === "single" ? (
         <>
           {top ? (
-            <div className="mb-6 flex flex-col gap-1 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 p-5 text-white shadow-md">
-              <p className="text-xs font-medium uppercase tracking-wide text-indigo-100">
-                최적의 카드 1장
-              </p>
-              <p className="text-xl font-bold">{top.card.name}</p>
-              <p className="text-sm text-indigo-100">
-                월 순혜택{" "}
-                <span className="font-semibold text-white">
-                  {formatWon(top.netMonthlyBenefit)}
+            <div
+              data-testid="top-card-banner"
+              className="mb-6 flex flex-col gap-3 rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 p-6 text-white shadow-lg shadow-indigo-500/10"
+            >
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-sm px-2.5 py-0.5 text-xs font-semibold tracking-wide text-indigo-50">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-300" />
+                  최적의 카드 1장
                 </span>
-              </p>
+                <span className="text-xs text-indigo-100">
+                  {top.card.issuer} · {top.card.cardType === "credit" ? "신용카드" : "체크카드"}
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+                  {top.card.name}
+                </h3>
+                <p className="mt-1 text-sm text-indigo-100/90">
+                  연회비 {formatWon(top.card.annualFee)} · 전월실적 인정금액 {formatWon(top.qualifyingSpend)}
+                </p>
+              </div>
+
+              <div className="mt-1 grid grid-cols-2 sm:grid-cols-3 gap-2.5 rounded-xl bg-white/10 p-3.5 backdrop-blur-sm">
+                <div>
+                  <p className="text-[11px] text-indigo-200">월 순혜택 (연회비 차감)</p>
+                  <p className="text-lg font-extrabold text-white">
+                    {formatWon(top.netMonthlyBenefit)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-indigo-200">월 총 혜택액</p>
+                  <p className="text-base font-bold text-indigo-100">
+                    +{formatWon(top.totalMonthlyBenefit)}
+                  </p>
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <p className="text-[11px] text-indigo-200">월 환산 연회비</p>
+                  <p className="text-base font-bold text-indigo-100">
+                    -{formatWon(Math.round(top.card.annualFee / 12))}
+                  </p>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="mb-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
-              현재 지출 기준으로 전월실적을 충족하는 카드가 없습니다. 지출액을 조정해 보세요.
+            <div
+              data-testid="no-eligible-card"
+              className="mb-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400"
+            >
+              <p className="font-semibold text-slate-700 dark:text-slate-300">
+                전월실적을 충족하는 카드가 없습니다
+              </p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                현재 지출 프로필 기준으로 실적 조건을 만족하는 카드가 없습니다. 소비 금액을 상향 조정해 보세요.
+              </p>
             </div>
           )}
 
-          <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
-            카테고리별 최적 카드 (단일 기준)
-          </h3>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              카테고리별 최적 카드 (단일 기준)
+            </h3>
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              실적 충족 카드 중 최고 혜택 매칭
+            </span>
+          </div>
+
           {activeWinners.length === 0 ? (
-            <p className="text-sm text-slate-400 dark:text-slate-500">
+            <div
+              data-testid="no-category-winners"
+              className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-500"
+            >
               추천할 수 있는 카테고리 조합이 없습니다.
-            </p>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div
+              data-testid="category-winners-grid"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+            >
               {categoryWinners.map((winner) => (
                 <div
                   key={winner.category}
-                  className={`flex items-center justify-between rounded-xl border p-3 text-sm transition-colors ${
+                  className={`flex items-center justify-between rounded-xl border p-3.5 text-sm transition-all ${
                     winner.bestCard
-                      ? "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-800/80"
-                      : "border-slate-100 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-600"
+                      ? "border-slate-200/90 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-800/90"
+                      : "border-slate-100 bg-slate-50 text-slate-400 dark:border-slate-800/50 dark:bg-slate-800/30 dark:text-slate-600"
                   }`}
                 >
-                  <div>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                  <div className="min-w-0 pr-2">
+                    <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
                       {categoryLabel(winner.category)}
                     </p>
-                    <p className="font-medium text-slate-800 dark:text-slate-200">
+                    <p className="truncate font-semibold text-slate-800 dark:text-slate-200">
                       {winner.bestCard ? winner.bestCard.name : "해당 없음"}
                     </p>
+                    {winner.bestCard && (
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                        {winner.bestCard.issuer}
+                      </p>
+                    )}
                   </div>
                   {winner.bestCard && (
-                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
-                      {formatWon(winner.benefitAmount)}
+                    <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+                      +{formatWon(winner.benefitAmount)}
                     </span>
                   )}
                 </div>
