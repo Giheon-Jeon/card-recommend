@@ -4,23 +4,30 @@ import type { CardEvaluation, CategoryBreakdown } from "@/types/recommendation";
 /** 카테고리별 지출 총합에서 전월실적 제외 카테고리를 뺀 실적 인정 금액을 계산합니다. */
 export function calculateQualifyingSpend(card: Card, spending: SpendingProfile): number {
   const excluded = new Set(card.excludedCategories ?? []);
-  return Object.entries(spending).reduce((sum, [category, amount]) => {
+  const total = Object.entries(spending).reduce((sum, [category, amount]) => {
     if (excluded.has(category)) return sum;
     return sum + (amount || 0);
   }, 0);
+
+  return Math.max(0, total);
 }
 
 /**
  * 실적 인정 금액을 기준으로, 조건을 만족하는 가장 높은(=혜택이 큰) 구간의 인덱스를 반환합니다.
- * tiers는 minSpend 오름차순이라고 가정합니다.
+ * tiers가 비어있거나 실적 조건을 만족하지 못하면 null을 반환합니다.
  */
 export function findApplicableTierIndex(card: Card, qualifyingSpend: number): number | null {
+  if (!card.tiers || card.tiers.length === 0) return null;
   let applicable: number | null = null;
+
   card.tiers.forEach((tier, index) => {
     if (qualifyingSpend >= tier.minSpend) {
-      applicable = index;
+      if (applicable === null || tier.minSpend >= card.tiers[applicable].minSpend) {
+        applicable = index;
+      }
     }
   });
+
   return applicable;
 }
 
@@ -32,10 +39,10 @@ export function evaluateCard(card: Card, spending: SpendingProfile): CardEvaluat
   const breakdown: CategoryBreakdown[] = [];
   let totalMonthlyBenefit = 0;
 
-  if (tierIndex !== null) {
+  if (tierIndex !== null && card.tiers[tierIndex]) {
     const tier = card.tiers[tierIndex];
     for (const benefit of tier.benefits) {
-      const spend = spending[benefit.category] ?? 0;
+      const spend = Math.max(0, spending[benefit.category] ?? 0);
       const rawAmount = spend * benefit.rate;
       const cappedAmount =
         benefit.capPerMonth !== undefined ? Math.min(rawAmount, benefit.capPerMonth) : rawAmount;
@@ -51,7 +58,7 @@ export function evaluateCard(card: Card, spending: SpendingProfile): CardEvaluat
     }
   }
 
-  const netMonthlyBenefit = totalMonthlyBenefit - card.annualFee / 12;
+  const netMonthlyBenefit = totalMonthlyBenefit - (card.annualFee || 0) / 12;
 
   return {
     card,
