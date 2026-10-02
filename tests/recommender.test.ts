@@ -129,4 +129,31 @@ describe("recommender - bestCardPerCategory with different minSpends", () => {
     expect(cafeWinner?.bestCard?.id).toBe("card-low");
     expect(cafeWinner?.benefitAmount).toBe(20000); // 200,000 * 0.1
   });
+
+  it("동일한 혜택 금액인 경우 순혜택이 더 높거나 연회비가 더 낮은 카드를 우선한다", () => {
+    const cardCheap: Card = {
+      id: "card-cheap",
+      name: "알뜰 카드",
+      issuer: "E사",
+      cardType: "credit",
+      annualFee: 0,
+      tiers: [{ minSpend: 100000, benefits: [{ category: "cafe", type: "discount", rate: 0.1, capPerMonth: 5000 }] }],
+    };
+    const cardExpensive: Card = {
+      id: "card-expensive",
+      name: "프리미엄 카드",
+      issuer: "F사",
+      cardType: "credit",
+      annualFee: 120000,
+      tiers: [{ minSpend: 100000, benefits: [{ category: "cafe", type: "discount", rate: 0.1, capPerMonth: 5000 }] }],
+    };
+
+    const winners = bestCardPerCategory([cardExpensive, cardCheap], { cafe: 100000 }, ["cafe"]);
+    expect(winners[0].bestCard?.id).toBe("card-cheap");
+  });
+
+  it("카드가 없거나 카테고리 목록이 비어있으면 안전하게 빈 결과를 반환한다", () => {
+    expect(bestCardPerCategory([], { cafe: 100000 }, ["cafe"])[0].bestCard).toBeNull();
+    expect(bestCardPerCategory([cardA], { cafe: 100000 }, [])).toEqual([]);
+  });
 });
