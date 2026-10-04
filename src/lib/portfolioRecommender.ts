@@ -9,6 +9,12 @@ import type {
 import { calculateQualifyingSpend, findApplicableTierIndex } from "./benefitCalculator";
 import { rankCards } from "./recommender";
 
+/** 포트폴리오 추천 탐색 옵션 */
+export interface RecommendPortfolioOptions {
+  /** 조합 탐색 시 고려할 후보군 최대 카드 수 (기본값: 16) */
+  candidateLimit?: number;
+}
+
 /**
  * 카드가 특정 카테고리에 대해 제공하는 가장 높은 할인/적립률과 해당 한도를 조회합니다.
  */
@@ -277,8 +283,9 @@ export function getCandidatePool(cards: Card[], spending: SpendingProfile, limit
 export function recommendPortfolios(
   cards: Card[],
   spending: SpendingProfile,
-  options?: { candidateLimit?: number },
+  options?: RecommendPortfolioOptions,
 ): PortfolioResult {
+
   const activeEntries = Object.entries(spending).filter(([, amount]) => (amount || 0) > 0);
   if (cards.length < 2 || activeEntries.length === 0) {
     return { pair: null, trio: null };

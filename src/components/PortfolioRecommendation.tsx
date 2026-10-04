@@ -106,8 +106,10 @@ export function PortfolioRecommendationView({
         >
           {pair && (
             <button
+              id="portfolio-tab-2"
               type="button"
               role="tab"
+              aria-controls="portfolio-tabpanel"
               aria-selected={selectedSize === 2}
               onClick={() => setSelectedSize(2)}
               className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
@@ -121,8 +123,10 @@ export function PortfolioRecommendationView({
           )}
           {trio && (
             <button
+              id="portfolio-tab-3"
               type="button"
               role="tab"
+              aria-controls="portfolio-tabpanel"
               aria-selected={selectedSize === 3}
               onClick={() => setSelectedSize(3)}
               className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
@@ -138,7 +142,13 @@ export function PortfolioRecommendationView({
       </div>
 
       {activePortfolio ? (
-        <>
+        <div
+          id="portfolio-tabpanel"
+          role="tabpanel"
+          aria-labelledby={selectedSize === 2 ? "portfolio-tab-2" : "portfolio-tab-3"}
+          className="flex flex-col gap-5"
+        >
+
           {/* 포트폴리오 핵심 지표 배너 */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-xl bg-gradient-to-br from-indigo-900/90 via-slate-900 to-violet-950 p-5 text-white shadow-md">
             <div className="space-y-1">
@@ -316,8 +326,9 @@ export function PortfolioRecommendationView({
               </table>
             </div>
           </div>
-        </>
+        </div>
       ) : (
+
         <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
           선택한 {selectedSize}장 조합에 유효한 포트폴리오를 구성할 수 없습니다. 지출액을 조정해 보세요.
         </div>

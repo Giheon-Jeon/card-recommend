@@ -165,6 +165,22 @@ describe("portfolioRecommender - recommendPortfolios", () => {
     expect(recommendPortfolios([cardA, cardB], {})).toEqual({ pair: null, trio: null });
   });
 
+  it("모든 지출 항목이 0원이면 pair와 trio 모두 null을 반환해야 한다", () => {
+    expect(recommendPortfolios([cardA, cardB], { cafe: 0, transport: 0 })).toEqual({
+      pair: null,
+      trio: null,
+    });
+  });
+
+  it("candidateLimit 옵션을 커스텀으로 전달해도 안정적으로 포트폴리오를 탐색해야 한다", () => {
+    const result = recommendPortfolios(
+      [cardA, cardB, cardC],
+      { cafe: 200000, transport: 200000 },
+      { candidateLimit: 2 },
+    );
+    expect(result.pair).not.toBeNull();
+  });
+
   it("전체 카탈로그(50장 이상)를 대상으로 포트폴리오 추천이 신속하게 완료되어야 한다", () => {
     const allCards = catalogCards.map(catalogEntryToCard);
     expect(allCards.length).toBeGreaterThan(40);
@@ -191,3 +207,4 @@ describe("portfolioRecommender - recommendPortfolios", () => {
     expect(duration).toBeLessThan(180);
   });
 });
+
