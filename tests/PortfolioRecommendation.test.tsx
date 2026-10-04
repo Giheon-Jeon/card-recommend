@@ -268,7 +268,25 @@ describe("PortfolioRecommendationView Component", () => {
     expect(doneBtn).toBeInTheDocument();
     expect(doneBtn).toBeDisabled();
   });
+
+  it("포트폴리오 탭과 탭패널의 WAI-ARIA 접근성 속성이 올바르게 매핑되어야 한다", () => {
+    render(
+      <PortfolioRecommendationView
+        portfolioResult={mockPortfolioResult}
+        categories={mockCategories}
+        myCardIds={[]}
+      />,
+    );
+
+    const tab2 = screen.getByRole("tab", { name: "2장 조합" });
+    expect(tab2).toHaveAttribute("aria-controls", "portfolio-tabpanel");
+
+    const tabpanel = screen.getByRole("tabpanel");
+    expect(tabpanel).toHaveAttribute("id", "portfolio-tabpanel");
+    expect(tabpanel).toHaveAttribute("aria-labelledby", "portfolio-tab-2");
+  });
 });
+
 
 describe("RecommendationResult Component with Portfolio Tab", () => {
   it("단일 카드 추천과 다중 카드 포트폴리오 탭 간 전환이 정상 동작해야 한다", () => {
