@@ -120,17 +120,46 @@ export function CatalogCardTile({
             </h3>
           </div>
 
-          {entry.benefitSummary && (
-            <p className="line-clamp-2 flex-1 text-xs leading-relaxed text-slate-500">
-              {entry.benefitSummary}
+          {entry.benefitSummary ? (
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {entry.benefitSummary
+                .split(/,\s*/)
+                .map((b) => b.trim())
+                .filter(Boolean)
+                .slice(0, 3)
+                .map((badge, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/10"
+                  >
+                    {badge}
+                  </span>
+                ))}
+              {entry.benefitSummary.split(/,\s*/).filter(Boolean).length > 3 && (
+                <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                  +{entry.benefitSummary.split(/,\s*/).filter(Boolean).length - 3}
+                </span>
+              )}
+            </div>
+          ) : (
+            <p className="line-clamp-2 flex-1 text-xs leading-relaxed text-slate-400">
+              등록된 혜택 요약 정보가 없습니다.
             </p>
           )}
 
-          <div className="mt-auto flex items-center justify-between pt-1">
-            <span className="text-xs text-slate-400">연회비</span>
-            <span className="text-sm font-semibold text-slate-900">
-              {entry.annualFee !== undefined ? formatWon(entry.annualFee) : "정보 없음"}
-            </span>
+          <div className="mt-auto flex flex-col gap-1 border-t border-slate-100 pt-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-400">연회비</span>
+              <span className="font-semibold text-slate-900">
+                {entry.annualFee !== undefined ? formatWon(entry.annualFee) : "정보 없음"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-400">실적 기준</span>
+              <span className="font-medium text-slate-700">
+                {entry.category === "체크" ? "전월 20만원 이상" : "전월 30만원 이상"}
+              </span>
+            </div>
           </div>
         </div>
       </button>

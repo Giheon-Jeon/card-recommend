@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { CatalogEntry } from "@/types/catalog";
 import { formatWon } from "@/lib/format";
+import { catalogEntryToCard } from "@/lib/cardConverter";
+import { categories } from "@/lib/loadCatalog";
 
 interface CardDetailModalProps {
   entry: CatalogEntry | null;
@@ -24,6 +26,13 @@ export function CardDetailModal({
     setPrevEntry(entry);
     setImgError(false);
   }
+
+  const parsedCard = entry ? catalogEntryToCard(entry) : null;
+  const benefits = parsedCard?.tiers[0]?.benefits ?? [];
+
+  const getCategoryLabel = (catId: string) => {
+    return categories.find((c) => c.id === catId)?.label || catId;
+  };
 
   useEffect(() => {
     if (!entry) return;
@@ -115,7 +124,7 @@ export function CardDetailModal({
         onClick={onClose}
         className="fixed inset-0 h-full w-full bg-slate-900/50 backdrop-blur-sm -z-10 cursor-default border-none"
       />
-      <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl animate-[popIn_0.18s_ease-out]">
+      <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl animate-[popIn_0.18s_ease-out]">
         <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-6 py-8">
           <button
             type="button"
@@ -156,6 +165,20 @@ export function CardDetailModal({
                 {entry.annualFee !== undefined ? formatWon(entry.annualFee) : "정보 없음"}
               </p>
             </div>
+            <div>
+              <p className="text-xs text-slate-400">실적 기준</p>
+              <p className="mt-0.5 font-medium text-slate-800">
+                {entry.category === "체크" ? "전월 20만원 이상" : "전월 30만원 이상"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">출처 링크</p>
+              <p className="mt-0.5 font-medium text-indigo-600">
+                <a href={entry.sourceUrl} target="_blank" rel="noreferrer" className="hover:underline">
+                  카드고릴라 제공 ↗
+                </a>
+              </p>
+            </div>
             {entry.annualFeeText && (
               <div className="col-span-2">
                 <p className="text-xs text-slate-400">연회비 상세</p>
@@ -171,7 +194,55 @@ export function CardDetailModal({
             </div>
           )}
 
-          <div className="flex gap-2">
+          {benefits.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-400">실적 구간별 혜택표</p>
+                <span className="text-[11px] font-medium text-indigo-600">
+                  {entry.category === "체크" ? "전월 20만원 이상 충족 시" : "전월 30만원 이상 충족 시"}
+                </span>
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">혜택 항목</th>
+                      <th className="px-3 py-2">구분</th>
+                      <th className="px-3 py-2">할인·적립률</th>
+                      <th className="px-3 py-2 text-right">월 한도</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+                    {benefits.map((b, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/50">
+                        <td className="px-3 py-2 font-medium text-slate-900">
+                          {getCategoryLabel(b.category)}
+                          {b.description && (
+                            <span className="block max-w-[170px] truncate text-[11px] font-normal text-slate-400">
+                              {b.description}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                            {b.type === "discount" ? "할인" : b.type === "point" ? "적립" : "캐시백"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 font-semibold text-indigo-600">
+                          {(b.rate * 100).toFixed(1).replace(/\.0$/, "")}%
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {b.capPerMonth ? formatWon(b.capPerMonth) : "무제한"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
             <button
               type="button"
               onClick={() => onToggleMyCards(entry)}

@@ -9,13 +9,20 @@ import { CardComparisonModal } from "@/components/catalog/CardComparisonModal";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useCardComparison } from "@/hooks/useCardComparison";
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 20;
 
 interface CatalogGalleryProps {
   myCards: ReturnType<typeof useMyCards>;
 }
 
-export type CatalogSortOption = "default" | "fee-asc" | "fee-desc" | "name-asc" | "newest";
+export type CatalogSortOption =
+  | "default"
+  | "popular"
+  | "benefit-desc"
+  | "fee-asc"
+  | "fee-desc"
+  | "name-asc"
+  | "newest";
 
 export function CatalogGallery({ myCards }: CatalogGalleryProps) {
   const [query, setQuery] = useState("");
@@ -29,7 +36,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const debouncedQuery = useDebounce(query, 250);
+  const debouncedQuery = useDebounce(query, 300);
 
   const filtered = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
@@ -46,6 +53,26 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
     if (sortOption === "default") return filtered;
     const items = [...filtered];
     switch (sortOption) {
+      case "popular":
+        return items.sort((a, b) => {
+          const scoreA =
+            (a.benefitSummary ? 10 : 0) +
+            (a.annualFee !== undefined ? 5 : 0) +
+            (a.imageUrl ? 5 : 0);
+          const scoreB =
+            (b.benefitSummary ? 10 : 0) +
+            (b.annualFee !== undefined ? 5 : 0) +
+            (b.imageUrl ? 5 : 0);
+          if (scoreA !== scoreB) return scoreB - scoreA;
+          return a.sourceId - b.sourceId;
+        });
+      case "benefit-desc":
+        return items.sort((a, b) => {
+          const countA = a.benefitSummary ? a.benefitSummary.split(/[,+]/).length : 0;
+          const countB = b.benefitSummary ? b.benefitSummary.split(/[,+]/).length : 0;
+          if (countA !== countB) return countB - countA;
+          return (b.benefitSummary?.length ?? 0) - (a.benefitSummary?.length ?? 0);
+        });
       case "fee-asc":
         return items.sort((a, b) => {
           const feeA = a.annualFee ?? Number.MAX_SAFE_INTEGER;
@@ -177,6 +204,8 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
           className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
         >
           <option value="default">기본순</option>
+          <option value="popular">인기순</option>
+          <option value="benefit-desc">혜택 많은 순</option>
           <option value="fee-asc">연회비 낮은순</option>
           <option value="fee-desc">연회비 높은순</option>
           <option value="name-asc">카드명 가나다순</option>

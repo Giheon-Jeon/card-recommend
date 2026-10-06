@@ -50,6 +50,14 @@ describe("CatalogGallery Component Smoke Test", () => {
     fireEvent.change(sortSelect, { target: { value: "name-asc" } });
     expect(sortSelect.value).toBe("name-asc");
 
+    // 인기순으로 변경
+    fireEvent.change(sortSelect, { target: { value: "popular" } });
+    expect(sortSelect.value).toBe("popular");
+
+    // 혜택 많은 순으로 변경
+    fireEvent.change(sortSelect, { target: { value: "benefit-desc" } });
+    expect(sortSelect.value).toBe("benefit-desc");
+
     // 최신 등록순으로 변경
     fireEvent.change(sortSelect, { target: { value: "newest" } });
     expect(sortSelect.value).toBe("newest");
@@ -84,7 +92,7 @@ describe("CatalogGallery Component Smoke Test", () => {
   it("더 보기 버튼 클릭 시 추가 카드가 로드되고 맨 위로 이동 버튼이 표시되어야 한다", () => {
     render(<CatalogGallery myCards={mockMyCards} />);
 
-    // 초기에는 맨 위로 이동 버튼이 없음 (24개 렌더링)
+    // 초기에는 맨 위로 이동 버튼이 없음 (20개 렌더링)
     expect(screen.queryByRole("button", { name: "맨 위로 이동" })).not.toBeInTheDocument();
 
     // 더 보기 버튼 확인 및 클릭
@@ -96,5 +104,46 @@ describe("CatalogGallery Component Smoke Test", () => {
     // 더 보기 후 맨 위로 이동 버튼 표시 확인
     const scrollToTopButton = screen.getByRole("button", { name: "맨 위로 이동" });
     expect(scrollToTopButton).toBeInTheDocument();
+  });
+
+  it("카드 타일에 연회비, 실적 기준 및 혜택 요약 뱃지가 올바르게 렌더링되어야 한다", () => {
+    render(<CatalogGallery myCards={mockMyCards} />);
+
+    // 카드 타일 내 실적 기준 텍스트 확인
+    const performanceLabels = screen.getAllByText("실적 기준");
+    expect(performanceLabels.length).toBeGreaterThan(0);
+
+    // 연회비 라벨 확인
+    const feeLabels = screen.getAllByText("연회비");
+    expect(feeLabels.length).toBeGreaterThan(0);
+
+    // 카드명 텍스트 확인 (첫 번째 카드 존재 여부)
+    const firstCardName = screen.getByText("신한카드 Hi-Point");
+    expect(firstCardName).toBeInTheDocument();
+  });
+
+  it("카드 타일 클릭 시 카드 상세 정보 모달이 열리고 실적 구간별 혜택표가 렌더링되어야 한다", () => {
+    render(<CatalogGallery myCards={mockMyCards} />);
+
+    // 신한카드 Hi-Point 타일 버튼 클릭
+    const cardButton = screen.getByRole("button", { name: /신한카드 Hi-Point 상세 정보 보기/ });
+    fireEvent.click(cardButton);
+
+    // 모달 타이틀 확인 (level 2 heading)
+    const modalTitle = screen.getByRole("heading", { level: 2, name: "신한카드 Hi-Point" });
+    expect(modalTitle).toBeInTheDocument();
+
+    // 실적 구간별 혜택표 렌더링 확인
+    const benefitsTableHeading = screen.getByText("실적 구간별 혜택표");
+    expect(benefitsTableHeading).toBeInTheDocument();
+
+    // 혜택표 헤더 확인
+    expect(screen.getByText("혜택 항목")).toBeInTheDocument();
+    expect(screen.getByText("할인·적립률")).toBeInTheDocument();
+
+    // 모달 닫기 버튼 클릭
+    const closeButton = screen.getByRole("button", { name: "닫기" });
+    fireEvent.click(closeButton);
+    expect(screen.queryByRole("heading", { level: 2, name: "신한카드 Hi-Point" })).not.toBeInTheDocument();
   });
 });
