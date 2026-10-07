@@ -12,6 +12,8 @@ interface MyCardsPageProps {
 
 export function MyCardsPage({ myCards }: MyCardsPageProps) {
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importMode, setImportMode] = useState<"merge" | "overwrite">("merge");
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -22,6 +24,32 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
 
   const totalAnnualFee = entries.reduce((sum, c) => sum + (c.annualFee ?? 0), 0);
   const knownFeeCount = entries.filter((c) => c.annualFee !== undefined).length;
+
+  const issuerStats = useMemo(() => {
+    const map = new Map<string, { count: number; totalFee: number }>();
+    for (const entry of entries) {
+      const issuer = entry.issuer || "기타";
+      const current = map.get(issuer) ?? { count: 0, totalFee: 0 };
+      current.count += 1;
+      current.totalFee += entry.annualFee ?? 0;
+      map.set(issuer, current);
+    }
+    return Array.from(map.entries())
+      .map(([issuer, stat]) => ({
+        issuer,
+        count: stat.count,
+        totalFee: stat.totalFee,
+      }))
+      .sort((a, b) => b.count - a.count || b.totalFee - a.totalFee);
+  }, [entries]);
+
+  const handleClearAll = () => {
+    if (myCards.ids.length === 0) return;
+    if (window.confirm("담아둔 모든 카드를 삭제하시겠습니까?")) {
+      myCards.clear();
+      toast.info("담아둔 모든 카드를 삭제했습니다.");
+    }
+  };
 
   const handleBackupDownload = () => {
     if (myCards.ids.length === 0) {
@@ -42,8 +70,13 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
       if (!result.success) {
         toast.error(result.error);
       } else {
-        const added = myCards.importIds(result.cardIds, "merge");
-        toast.success(`카드 ${result.count}장을 성공적으로 불러왔습니다. (신규 추가: ${added}장)`);
+        const added = myCards.importIds(result.cardIds, importMode);
+        if (importMode === "overwrite") {
+          toast.success(`기존 카드를 대체하여 총 ${result.count}장을 불러왔습니다.`);
+        } else {
+          toast.success(`카드 ${result.count}장을 성공적으로 불러왔습니다. (신규 추가: ${added}장)`);
+        }
+        setIsImportModalOpen(false);
       }
     } catch {
       toast.error("파일을 읽는 도중 오류가 발생했습니다.");
@@ -91,9 +124,9 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
         <>
           <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-lg font-semibold text-slate-900">내 카드</h2>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
                     onClick={handleBackupDownload}
@@ -107,7 +140,7 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => setIsImportModalOpen(true)}
                     className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:border-indigo-300 hover:bg-white hover:text-indigo-600"
                     title="JSON 파일에서 내 카드 목록 불러오기"
                   >
@@ -115,6 +148,17 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
                     불러오기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-rose-600 transition hover:border-rose-300 hover:bg-rose-50"
+                    title="담아둔 모든 카드 비우기"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    전체 비우기
                   </button>
                 </div>
               </div>
@@ -129,6 +173,40 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
               <p className="text-lg font-bold text-indigo-700">{formatWon(totalAnnualFee)}</p>
             </div>
           </div>
+
+          {issuerStats.length > 0 && (
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  카드사별 보유 현황
+                </h3>
+                <span className="text-xs text-slate-400">총 {issuerStats.length}개 카드사</span>
+              </div>
+              <div
+                data-testid="issuer-stats-grid"
+                className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"
+              >
+                {issuerStats.map((stat) => (
+                  <div
+                    key={stat.issuer}
+                    className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3 shadow-xs transition hover:border-indigo-200"
+                  >
+                    <span className="truncate text-xs font-medium text-slate-500" title={stat.issuer}>
+                      {stat.issuer}
+                    </span>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-sm font-bold text-slate-800">
+                        {stat.count}<span className="text-xs font-normal text-slate-400">장</span>
+                      </span>
+                      <span className="text-[11px] font-semibold text-indigo-600">
+                        {formatWon(stat.totalFee)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {entries.map((entry) => (
@@ -174,6 +252,94 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
         inMyCards={selected ? myCards.has(selected.sourceId) : false}
         onToggleMyCards={(e) => myCards.toggle(e.sourceId)}
       />
+
+      {isImportModalOpen && (
+        <dialog
+          open
+          aria-modal="true"
+          aria-labelledby="import-modal-title"
+          className="fixed inset-0 z-50 m-0 flex h-full w-full max-h-none max-w-none items-center justify-center border-none bg-slate-900/50 p-4 backdrop-blur-xs"
+        >
+          <div className="flex w-full max-w-md flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div className="flex flex-col gap-1.5">
+              <h3 id="import-modal-title" className="text-base font-semibold text-slate-900">
+                내 카드 불러오기 방식 선택
+              </h3>
+              <p className="text-xs text-slate-500">
+                백업 JSON 파일을 불러옵니다. 현재 담긴 카드({entries.length}장)에 복원할 방식을 선택해 주세요.
+              </p>
+            </div>
+
+            <fieldset className="flex flex-col gap-2.5">
+              <legend className="sr-only">불러오기 모드 선택</legend>
+              <label
+                htmlFor="import-mode-merge"
+                aria-label="기존 목록에 병합"
+                className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition ${
+                  importMode === "merge" ? "border-indigo-500 bg-indigo-50/50" : "border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                <input
+                  id="import-mode-merge"
+                  type="radio"
+                  name="import-mode"
+                  value="merge"
+                  checked={importMode === "merge"}
+                  onChange={() => setImportMode("merge")}
+                  className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-slate-900">기존 목록에 병합 (권장)</span>
+                  <span className="text-[11px] text-slate-500">
+                    현재 담아둔 카드를 유지하고 새로운 카드만 중복 없이 추가합니다.
+                  </span>
+                </div>
+              </label>
+
+              <label
+                htmlFor="import-mode-overwrite"
+                aria-label="기존 목록 덮어쓰기"
+                className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition ${
+                  importMode === "overwrite" ? "border-indigo-500 bg-indigo-50/50" : "border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                <input
+                  id="import-mode-overwrite"
+                  type="radio"
+                  name="import-mode"
+                  value="overwrite"
+                  checked={importMode === "overwrite"}
+                  onChange={() => setImportMode("overwrite")}
+                  className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-rose-600">기존 목록 덮어쓰기</span>
+                  <span className="text-[11px] text-slate-500">
+                    현재 담아둔 모든 카드를 삭제하고 백업 파일의 카드로 완전히 대체합니다.
+                  </span>
+                </div>
+              </label>
+            </fieldset>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-indigo-700"
+              >
+                JSON 파일 선택
+              </button>
+            </div>
+          </div>
+        </dialog>
+      )}
     </section>
   );
 }
