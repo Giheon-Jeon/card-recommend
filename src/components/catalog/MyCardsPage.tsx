@@ -23,6 +23,32 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
   const totalAnnualFee = entries.reduce((sum, c) => sum + (c.annualFee ?? 0), 0);
   const knownFeeCount = entries.filter((c) => c.annualFee !== undefined).length;
 
+  const issuerStats = useMemo(() => {
+    const map = new Map<string, { count: number; totalFee: number }>();
+    for (const entry of entries) {
+      const issuer = entry.issuer || "기타";
+      const current = map.get(issuer) ?? { count: 0, totalFee: 0 };
+      current.count += 1;
+      current.totalFee += entry.annualFee ?? 0;
+      map.set(issuer, current);
+    }
+    return Array.from(map.entries())
+      .map(([issuer, stat]) => ({
+        issuer,
+        count: stat.count,
+        totalFee: stat.totalFee,
+      }))
+      .sort((a, b) => b.count - a.count || b.totalFee - a.totalFee);
+  }, [entries]);
+
+  const handleClearAll = () => {
+    if (myCards.ids.length === 0) return;
+    if (window.confirm("담아둔 모든 카드를 삭제하시겠습니까?")) {
+      myCards.clear();
+      toast.info("담아둔 모든 카드를 삭제했습니다.");
+    }
+  };
+
   const handleBackupDownload = () => {
     if (myCards.ids.length === 0) {
       toast.error("백업할 카드가 없습니다.");
@@ -91,9 +117,9 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
         <>
           <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-lg font-semibold text-slate-900">내 카드</h2>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
                     onClick={handleBackupDownload}
@@ -116,6 +142,17 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
                     </svg>
                     불러오기
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-rose-600 transition hover:border-rose-300 hover:bg-rose-50"
+                    title="담아둔 모든 카드 비우기"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    전체 비우기
+                  </button>
                 </div>
               </div>
               <p className="mt-1 text-sm text-slate-500">
@@ -129,6 +166,40 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
               <p className="text-lg font-bold text-indigo-700">{formatWon(totalAnnualFee)}</p>
             </div>
           </div>
+
+          {issuerStats.length > 0 && (
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  카드사별 보유 현황
+                </h3>
+                <span className="text-xs text-slate-400">총 {issuerStats.length}개 카드사</span>
+              </div>
+              <div
+                data-testid="issuer-stats-grid"
+                className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"
+              >
+                {issuerStats.map((stat) => (
+                  <div
+                    key={stat.issuer}
+                    className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3 shadow-xs transition hover:border-indigo-200"
+                  >
+                    <span className="truncate text-xs font-medium text-slate-500" title={stat.issuer}>
+                      {stat.issuer}
+                    </span>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-sm font-bold text-slate-800">
+                        {stat.count}<span className="text-xs font-normal text-slate-400">장</span>
+                      </span>
+                      <span className="text-[11px] font-semibold text-indigo-600">
+                        {formatWon(stat.totalFee)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {entries.map((entry) => (
