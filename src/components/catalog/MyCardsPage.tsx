@@ -12,6 +12,8 @@ interface MyCardsPageProps {
 
 export function MyCardsPage({ myCards }: MyCardsPageProps) {
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importMode, setImportMode] = useState<"merge" | "overwrite">("merge");
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,8 +70,13 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
       if (!result.success) {
         toast.error(result.error);
       } else {
-        const added = myCards.importIds(result.cardIds, "merge");
-        toast.success(`카드 ${result.count}장을 성공적으로 불러왔습니다. (신규 추가: ${added}장)`);
+        const added = myCards.importIds(result.cardIds, importMode);
+        if (importMode === "overwrite") {
+          toast.success(`기존 카드를 대체하여 총 ${result.count}장을 불러왔습니다.`);
+        } else {
+          toast.success(`카드 ${result.count}장을 성공적으로 불러왔습니다. (신규 추가: ${added}장)`);
+        }
+        setIsImportModalOpen(false);
       }
     } catch {
       toast.error("파일을 읽는 도중 오류가 발생했습니다.");
@@ -133,7 +140,7 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => setIsImportModalOpen(true)}
                     className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:border-indigo-300 hover:bg-white hover:text-indigo-600"
                     title="JSON 파일에서 내 카드 목록 불러오기"
                   >
@@ -245,6 +252,94 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
         inMyCards={selected ? myCards.has(selected.sourceId) : false}
         onToggleMyCards={(e) => myCards.toggle(e.sourceId)}
       />
+
+      {isImportModalOpen && (
+        <dialog
+          open
+          aria-modal="true"
+          aria-labelledby="import-modal-title"
+          className="fixed inset-0 z-50 m-0 flex h-full w-full max-h-none max-w-none items-center justify-center border-none bg-slate-900/50 p-4 backdrop-blur-xs"
+        >
+          <div className="flex w-full max-w-md flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div className="flex flex-col gap-1.5">
+              <h3 id="import-modal-title" className="text-base font-semibold text-slate-900">
+                내 카드 불러오기 방식 선택
+              </h3>
+              <p className="text-xs text-slate-500">
+                백업 JSON 파일을 불러옵니다. 현재 담긴 카드({entries.length}장)에 복원할 방식을 선택해 주세요.
+              </p>
+            </div>
+
+            <fieldset className="flex flex-col gap-2.5">
+              <legend className="sr-only">불러오기 모드 선택</legend>
+              <label
+                htmlFor="import-mode-merge"
+                aria-label="기존 목록에 병합"
+                className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition ${
+                  importMode === "merge" ? "border-indigo-500 bg-indigo-50/50" : "border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                <input
+                  id="import-mode-merge"
+                  type="radio"
+                  name="import-mode"
+                  value="merge"
+                  checked={importMode === "merge"}
+                  onChange={() => setImportMode("merge")}
+                  className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-slate-900">기존 목록에 병합 (권장)</span>
+                  <span className="text-[11px] text-slate-500">
+                    현재 담아둔 카드를 유지하고 새로운 카드만 중복 없이 추가합니다.
+                  </span>
+                </div>
+              </label>
+
+              <label
+                htmlFor="import-mode-overwrite"
+                aria-label="기존 목록 덮어쓰기"
+                className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition ${
+                  importMode === "overwrite" ? "border-indigo-500 bg-indigo-50/50" : "border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                <input
+                  id="import-mode-overwrite"
+                  type="radio"
+                  name="import-mode"
+                  value="overwrite"
+                  checked={importMode === "overwrite"}
+                  onChange={() => setImportMode("overwrite")}
+                  className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-rose-600">기존 목록 덮어쓰기</span>
+                  <span className="text-[11px] text-slate-500">
+                    현재 담아둔 모든 카드를 삭제하고 백업 파일의 카드로 완전히 대체합니다.
+                  </span>
+                </div>
+              </label>
+            </fieldset>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-indigo-700"
+              >
+                JSON 파일 선택
+              </button>
+            </div>
+          </div>
+        </dialog>
+      )}
     </section>
   );
 }
