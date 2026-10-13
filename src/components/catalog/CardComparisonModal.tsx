@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CatalogEntry } from "@/types/catalog";
 import { formatWon } from "@/lib/format";
+import { categories } from "@/lib/loadCatalog";
+import { catalogEntryToCard } from "@/lib/cardConverter";
+import type { Benefit } from "@/types/card";
 
 interface CardComparisonModalProps {
   isOpen: boolean;
@@ -43,6 +46,31 @@ export function CardComparisonModal({
 }: CardComparisonModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const prevActiveElementRef = useRef<HTMLElement | null>(null);
+
+  // 각 카드의 파싱된 혜택 매핑
+  const parsedCards = useMemo(() => {
+    return cards.map((card) => {
+      const parsed = catalogEntryToCard(card);
+      const benefits = parsed.tiers[0]?.benefits ?? [];
+      const benefitMap = new Map<string, Benefit>();
+      for (const b of benefits) {
+        benefitMap.set(b.category, b);
+      }
+      return { card, parsed, benefitMap };
+    });
+  }, [cards]);
+
+  // 카테고리별 최고 혜택률 계산
+  const getCategoryBestRate = (catId: string): number => {
+    let max = 0;
+    for (const p of parsedCards) {
+      const b = p.benefitMap.get(catId);
+      if (b && b.rate > max) {
+        max = b.rate;
+      }
+    }
+    return max;
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -139,7 +167,7 @@ export function CardComparisonModal({
               관심 카드 혜택 및 연회비 비교
             </h2>
             <p className="text-xs text-slate-500">
-              선택한 카드 {cards.length}종의 주요 정보를 나란히 대조하여 비교합니다.
+              선택한 카드 {cards.length}종의 주요 스펙과 10개 소비 카테고리별 혜택률을 나란히 대조합니다.
             </p>
           </div>
           <button
@@ -159,9 +187,9 @@ export function CardComparisonModal({
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="w-32 py-3 pr-4 font-semibold text-slate-500">항목</th>
+                <th className="w-36 py-3 pr-4 font-semibold text-slate-500">항목</th>
                 {cards.map((card) => (
-                  <th key={card.sourceId} className="min-w-[200px] px-4 py-3 align-top font-semibold text-slate-900">
+                  <th key={card.sourceId} className="min-w-[220px] px-4 py-3 align-top font-semibold text-slate-900">
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-indigo-600">
@@ -193,11 +221,32 @@ export function CardComparisonModal({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {/* 섹션 구분: 기본 스펙 */}
+              <tr className="bg-slate-50/80">
+                <td colSpan={cards.length + 1} className="py-2 px-3 text-xs font-bold text-slate-700">
+                  기본 스펙 대조
+                </td>
+              </tr>
+
+              {/* 카드 종류 */}
+              <tr>
+                <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-500">
+                  카드 유형
+                </th>
+                {cards.map((card) => (
+                  <td key={card.sourceId} className="px-4 py-3.5 align-top">
+                    <span className="font-medium text-slate-800">{card.category || "정보 없음"}</span>
+                  </td>
+                ))}
+              </tr>
+
               {/* 연회비 */}
               <tr>
-                <td className="py-4 pr-4 font-semibold text-slate-500">연회비</td>
+                <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-500">
+                  연회비
+                </th>
                 {cards.map((card) => (
-                  <td key={card.sourceId} className="px-4 py-4 align-top">
+                  <td key={card.sourceId} className="px-4 py-3.5 align-top">
                     <span className="text-base font-bold text-slate-900">
                       {card.annualFee !== undefined ? formatWon(card.annualFee) : "정보 없음"}
                     </span>
@@ -208,9 +257,85 @@ export function CardComparisonModal({
                 ))}
               </tr>
 
+              {/* 실적 기준 */}
+              <tr>
+                <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-500">
+                  최소 실적 기준
+                </th>
+                {cards.map((card) => (
+                  <td key={card.sourceId} className="px-4 py-3.5 align-top">
+                    <span className="font-medium text-slate-800">
+                      {card.category === "체크" ? "전월 20만원 이상" : "전월 30만원 이상"}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+
+              {/* 섹션 구분: 10개 소비 카테고리별 혜택 */}
+              <tr className="bg-slate-50/80">
+                <td colSpan={cards.length + 1} className="py-2 px-3 text-xs font-bold text-indigo-900">
+                  10개 소비 카테고리별 혜택 비교
+                </td>
+              </tr>
+
+              {categories.map((cat) => {
+                const bestRate = getCategoryBestRate(cat.id);
+                return (
+                  <tr key={cat.id} className="hover:bg-slate-50/50">
+                    <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-600">
+                      <span>{cat.label}</span>
+                    </th>
+                    {parsedCards.map(({ card, benefitMap }) => {
+                      const benefit = benefitMap.get(cat.id);
+                      const isBest = Boolean(benefit && benefit.rate > 0 && benefit.rate === bestRate);
+                      return (
+                        <td key={card.sourceId} className="px-4 py-3.5 align-top">
+                          {benefit && benefit.rate > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-slate-900">
+                                  {(benefit.rate * 100).toFixed(1).replace(/\.0$/, "")}%{" "}
+                                  {benefit.type === "point" ? "적립" : benefit.type === "cashback" ? "캐시백" : "할인"}
+                                </span>
+                                {isBest && (
+                                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                    ★ 최고 혜택
+                                  </span>
+                                )}
+                              </div>
+                              {benefit.capPerMonth && (
+                                <span className="text-xs text-slate-500">
+                                  월 최대 {formatWon(benefit.capPerMonth)}
+                                </span>
+                              )}
+                              {benefit.description && (
+                                <span className="text-[11px] text-slate-400 line-clamp-2">
+                                  {benefit.description}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-300">-</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+
+              {/* 섹션 구분: 부가 정보 */}
+              <tr className="bg-slate-50/80">
+                <td colSpan={cards.length + 1} className="py-2 px-3 text-xs font-bold text-slate-700">
+                  기타 안내 및 보관
+                </td>
+              </tr>
+
               {/* 주요 혜택 요약 */}
               <tr>
-                <td className="py-4 pr-4 font-semibold text-slate-500">혜택 요약</td>
+                <th scope="row" className="py-4 pr-4 text-left font-semibold text-slate-500">
+                  혜택 요약
+                </th>
                 {cards.map((card) => (
                   <td key={card.sourceId} className="px-4 py-4 align-top">
                     {card.benefitSummary ? (
@@ -226,7 +351,9 @@ export function CardComparisonModal({
 
               {/* 내 카드 담기 액션 */}
               <tr>
-                <td className="py-4 pr-4 font-semibold text-slate-500">내 카드 보관</td>
+                <th scope="row" className="py-4 pr-4 text-left font-semibold text-slate-500">
+                  내 카드 보관
+                </th>
                 {cards.map((card) => {
                   const saved = inMyCards(card.sourceId);
                   return (
@@ -249,7 +376,9 @@ export function CardComparisonModal({
 
               {/* 카드 상세보기 링크 */}
               <tr>
-                <td className="py-4 pr-4 font-semibold text-slate-500">공식 안내</td>
+                <th scope="row" className="py-4 pr-4 text-left font-semibold text-slate-500">
+                  공식 안내
+                </th>
                 {cards.map((card) => (
                   <td key={card.sourceId} className="px-4 py-4 align-top">
                     {card.sourceUrl ? (
