@@ -292,6 +292,37 @@ describe("CardComparisonModal Component", () => {
     expect(handleClose).toHaveBeenCalled();
   });
 
+  it("카드 기본 스펙(카드 유형, 최소 실적 기준) 및 10개 카테고리별 혜택 대조표가 렌더링되어야 한다", () => {
+    render(
+      <CardComparisonModal
+        isOpen={true}
+        cards={[mockCard1, mockCard2]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // 기본 스펙 행 확인
+    expect(screen.getByText("기본 스펙 대조")).toBeInTheDocument();
+    expect(screen.getByText("카드 유형")).toBeInTheDocument();
+    expect(screen.getByText("최소 실적 기준")).toBeInTheDocument();
+    expect(screen.getAllByText("전월 30만원 이상")).toHaveLength(2);
+
+    // 10개 카테고리 대조 섹션 및 카테고리 라벨 확인
+    expect(screen.getByText("10개 소비 카테고리별 혜택 비교")).toBeInTheDocument();
+    expect(screen.getByText("대중교통")).toBeInTheDocument();
+    expect(screen.getByText("카페/디저트")).toBeInTheDocument();
+    expect(screen.getByText("편의점")).toBeInTheDocument();
+
+    // 혜택률 렌더링 확인
+    expect(screen.getAllByText(/10% 할인/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/10% 적립/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/5% 할인/).length).toBeGreaterThan(0);
+
+    // 최고 혜택 강조 배지 확인 (대중교통: mockCard1, 카페: mockCard2 등)
+    const bestBadges = screen.getAllByText("★ 최고 혜택");
+    expect(bestBadges.length).toBeGreaterThan(0);
+  });
+
   it("Escape 키 입력 시 onClose가 호출되어야 한다", () => {
     const handleClose = vi.fn();
     render(

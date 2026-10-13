@@ -69,6 +69,7 @@ export function CardComparisonDrawer({
   return (
     <aside
       aria-label="카드 비교 서랍"
+      aria-live="polite"
       className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/90 bg-white/95 p-3 shadow-2xl backdrop-blur-md transition-all duration-300 sm:p-4"
     >
       <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
