@@ -21,6 +21,7 @@ export function useCardComparison() {
       const exists = selectedCards.some((c) => c.sourceId === entry.sourceId);
       if (exists) {
         setSelectedCards((prev) => prev.filter((c) => c.sourceId !== entry.sourceId));
+        toast.info(`${entry.name} 카드를 비교함에서 제외했습니다.`);
         return true;
       }
 
@@ -30,19 +31,30 @@ export function useCardComparison() {
       }
 
       setSelectedCards((prev) => [...prev, entry]);
+      toast.success(`${entry.name} 카드를 비교함에 담았습니다. (${selectedCards.length + 1}/${MAX_COMPARE_COUNT})`);
       return true;
     },
     [selectedCards, toast],
   );
 
-  const removeCard = useCallback((sourceId: number) => {
-    setSelectedCards((prev) => prev.filter((c) => c.sourceId !== sourceId));
-  }, []);
+  const removeCard = useCallback(
+    (sourceId: number) => {
+      const target = selectedCards.find((c) => c.sourceId === sourceId);
+      if (target) {
+        toast.info(`${target.name} 카드를 비교함에서 제외했습니다.`);
+      }
+      setSelectedCards((prev) => prev.filter((c) => c.sourceId !== sourceId));
+    },
+    [selectedCards, toast],
+  );
 
   const clear = useCallback(() => {
+    if (selectedCards.length > 0) {
+      toast.info("비교함을 모두 비웠습니다.");
+    }
     setSelectedCards([]);
     setIsModalOpen(false);
-  }, []);
+  }, [selectedCards.length, toast]);
 
   const openModal = useCallback(() => {
     if (selectedCards.length < 2) {
