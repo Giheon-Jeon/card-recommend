@@ -19,7 +19,7 @@ function CardImageCell({ card }: { card: CatalogEntry }) {
   const showImage = card.imageUrl && !imgError;
 
   return (
-    <div className="flex h-24 w-full items-center justify-center rounded-xl bg-slate-50 p-2">
+    <div className="flex h-24 w-full items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800/80 p-2">
       {showImage ? (
         <img
           src={card.imageUrl}
@@ -28,7 +28,7 @@ function CardImageCell({ card }: { card: CatalogEntry }) {
           className="h-full max-h-20 w-auto object-contain drop-shadow-sm"
         />
       ) : (
-        <div className="flex h-16 w-24 items-center justify-center rounded-lg bg-indigo-100 text-xs font-semibold text-indigo-500">
+        <div className="flex h-16 w-24 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-xs font-semibold text-indigo-500 dark:text-indigo-400">
           이미지 없음
         </div>
       )}
@@ -159,14 +159,14 @@ export function CardComparisonModal({
         className="fixed inset-0 h-full w-full bg-slate-900/60 backdrop-blur-xs -z-10 cursor-default border-none"
       />
 
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 dark:border dark:border-slate-800 shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200/80 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 px-6 py-4">
           <div>
-            <h2 id="comparison-modal-title" className="text-lg font-bold text-slate-900">
+            <h2 id="comparison-modal-title" className="text-lg font-bold text-slate-900 dark:text-slate-100">
               관심 카드 혜택 및 연회비 비교
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               선택한 카드 {cards.length}종의 주요 스펙과 10개 소비 카테고리별 혜택률을 나란히 대조합니다.
             </p>
           </div>
@@ -174,7 +174,7 @@ export function CardComparisonModal({
             type="button"
             onClick={onClose}
             aria-label="비교 모달 닫기"
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -186,13 +186,13 @@ export function CardComparisonModal({
         <div className="flex-1 overflow-x-auto overflow-y-auto p-6">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200">
-                <th className="w-36 py-3 pr-4 font-semibold text-slate-500">항목</th>
+              <tr className="border-b border-slate-200 dark:border-slate-800">
+                <th className="w-36 py-3 pr-4 font-semibold text-slate-500 dark:text-slate-400">항목</th>
                 {cards.map((card) => (
-                  <th key={card.sourceId} className="min-w-[220px] px-4 py-3 align-top font-semibold text-slate-900">
+                  <th key={card.sourceId} className="min-w-[220px] px-4 py-3 align-top font-semibold text-slate-900 dark:text-slate-100">
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-indigo-600">
+                        <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                           {card.issuer || "카드사 미상"}
                         </span>
                         {onRemoveCard && (
@@ -200,7 +200,7 @@ export function CardComparisonModal({
                             type="button"
                             onClick={() => onRemoveCard(card.sourceId)}
                             aria-label={`${card.name} 비교에서 제외`}
-                            className="text-xs text-slate-400 hover:text-rose-600 cursor-pointer"
+                            className="text-xs text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
                           >
                             제외
                           </button>
@@ -210,7 +210,7 @@ export function CardComparisonModal({
                       <div className="flex flex-col">
                         <span className="line-clamp-2 font-bold leading-snug">{card.name}</span>
                         {card.category && (
-                          <span className="mt-1 w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                          <span className="mt-1 w-fit rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300">
                             {card.category}
                           </span>
                         )}
@@ -220,38 +220,38 @@ export function CardComparisonModal({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {/* 섹션 구분: 기본 스펙 */}
-              <tr className="bg-slate-50/80">
-                <td colSpan={cards.length + 1} className="py-2 px-3 text-xs font-bold text-slate-700">
+              <tr className="bg-slate-50/80 dark:bg-slate-800/60">
+                <td colSpan={cards.length + 1} className="py-2 px-3 text-xs font-bold text-slate-700 dark:text-slate-300">
                   기본 스펙 대조
                 </td>
               </tr>
 
               {/* 카드 종류 */}
               <tr>
-                <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-500">
+                <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-500 dark:text-slate-400">
                   카드 유형
                 </th>
                 {cards.map((card) => (
                   <td key={card.sourceId} className="px-4 py-3.5 align-top">
-                    <span className="font-medium text-slate-800">{card.category || "정보 없음"}</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{card.category || "정보 없음"}</span>
                   </td>
                 ))}
               </tr>
 
               {/* 연회비 */}
               <tr>
-                <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-500">
+                <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-500 dark:text-slate-400">
                   연회비
                 </th>
                 {cards.map((card) => (
                   <td key={card.sourceId} className="px-4 py-3.5 align-top">
-                    <span className="text-base font-bold text-slate-900">
+                    <span className="text-base font-bold text-slate-900 dark:text-slate-100">
                       {card.annualFee !== undefined ? formatWon(card.annualFee) : "정보 없음"}
                     </span>
                     {card.annualFeeText && (
-                      <p className="mt-1 text-xs text-slate-400">{card.annualFeeText}</p>
+                      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{card.annualFeeText}</p>
                     )}
                   </td>
                 ))}
@@ -259,12 +259,12 @@ export function CardComparisonModal({
 
               {/* 실적 기준 */}
               <tr>
-                <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-500">
+                <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-500 dark:text-slate-400">
                   최소 실적 기준
                 </th>
                 {cards.map((card) => (
                   <td key={card.sourceId} className="px-4 py-3.5 align-top">
-                    <span className="font-medium text-slate-800">
+                    <span className="font-medium text-slate-800 dark:text-slate-200">
                       {card.category === "체크" ? "전월 20만원 이상" : "전월 30만원 이상"}
                     </span>
                   </td>
@@ -272,8 +272,8 @@ export function CardComparisonModal({
               </tr>
 
               {/* 섹션 구분: 10개 소비 카테고리별 혜택 */}
-              <tr className="bg-slate-50/80">
-                <td colSpan={cards.length + 1} className="py-2 px-3 text-xs font-bold text-indigo-900">
+              <tr className="bg-slate-50/80 dark:bg-slate-800/60">
+                <td colSpan={cards.length + 1} className="py-2 px-3 text-xs font-bold text-indigo-900 dark:text-indigo-300">
                   10개 소비 카테고리별 혜택 비교
                 </td>
               </tr>
@@ -281,8 +281,8 @@ export function CardComparisonModal({
               {categories.map((cat) => {
                 const bestRate = getCategoryBestRate(cat.id);
                 return (
-                  <tr key={cat.id} className="hover:bg-slate-50/50">
-                    <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-600">
+                  <tr key={cat.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                    <th scope="row" className="py-3.5 pr-4 text-left font-semibold text-slate-600 dark:text-slate-400">
                       <span>{cat.label}</span>
                     </th>
                     {parsedCards.map(({ card, benefitMap }) => {
@@ -293,29 +293,29 @@ export function CardComparisonModal({
                           {benefit && benefit.rate > 0 ? (
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-slate-900">
+                                <span className="font-bold text-slate-900 dark:text-slate-100">
                                   {(benefit.rate * 100).toFixed(1).replace(/\.0$/, "")}%{" "}
                                   {benefit.type === "point" ? "적립" : benefit.type === "cashback" ? "캐시백" : "할인"}
                                 </span>
                                 {isBest && (
-                                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                  <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                                     ★ 최고 혜택
                                   </span>
                                 )}
                               </div>
                               {benefit.capPerMonth && (
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs text-slate-500 dark:text-slate-400">
                                   월 최대 {formatWon(benefit.capPerMonth)}
                                 </span>
                               )}
                               {benefit.description && (
-                                <span className="text-[11px] text-slate-400 line-clamp-2">
+                                <span className="text-[11px] text-slate-400 dark:text-slate-500 line-clamp-2">
                                   {benefit.description}
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-slate-300">-</span>
+                            <span className="text-xs text-slate-300 dark:text-slate-600">-</span>
                           )}
                         </td>
                       );
@@ -325,25 +325,25 @@ export function CardComparisonModal({
               })}
 
               {/* 섹션 구분: 부가 정보 */}
-              <tr className="bg-slate-50/80">
-                <td colSpan={cards.length + 1} className="py-2 px-3 text-xs font-bold text-slate-700">
+              <tr className="bg-slate-50/80 dark:bg-slate-800/60">
+                <td colSpan={cards.length + 1} className="py-2 px-3 text-xs font-bold text-slate-700 dark:text-slate-300">
                   기타 안내 및 보관
                 </td>
               </tr>
 
               {/* 주요 혜택 요약 */}
               <tr>
-                <th scope="row" className="py-4 pr-4 text-left font-semibold text-slate-500">
+                <th scope="row" className="py-4 pr-4 text-left font-semibold text-slate-500 dark:text-slate-400">
                   혜택 요약
                 </th>
                 {cards.map((card) => (
                   <td key={card.sourceId} className="px-4 py-4 align-top">
                     {card.benefitSummary ? (
-                      <p className="whitespace-pre-line text-xs leading-relaxed text-slate-700">
+                      <p className="whitespace-pre-line text-xs leading-relaxed text-slate-700 dark:text-slate-300">
                         {card.benefitSummary}
                       </p>
                     ) : (
-                      <span className="text-xs text-slate-400">혜택 정보 없음</span>
+                      <span className="text-xs text-slate-400 dark:text-slate-500">혜택 정보 없음</span>
                     )}
                   </td>
                 ))}
@@ -351,7 +351,7 @@ export function CardComparisonModal({
 
               {/* 내 카드 담기 액션 */}
               <tr>
-                <th scope="row" className="py-4 pr-4 text-left font-semibold text-slate-500">
+                <th scope="row" className="py-4 pr-4 text-left font-semibold text-slate-500 dark:text-slate-400">
                   내 카드 보관
                 </th>
                 {cards.map((card) => {
@@ -363,8 +363,8 @@ export function CardComparisonModal({
                         onClick={() => onToggleMyCards(card)}
                         className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition cursor-pointer ${
                           saved
-                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 dark:border-indigo-500 dark:bg-indigo-950/60 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-indigo-300 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-300"
                         }`}
                       >
                         {saved ? "내 카드 담김 ✓" : "+ 내 카드 담기"}
@@ -376,7 +376,7 @@ export function CardComparisonModal({
 
               {/* 카드 상세보기 링크 */}
               <tr>
-                <th scope="row" className="py-4 pr-4 text-left font-semibold text-slate-500">
+                <th scope="row" className="py-4 pr-4 text-left font-semibold text-slate-500 dark:text-slate-400">
                   공식 안내
                 </th>
                 {cards.map((card) => (
@@ -386,12 +386,12 @@ export function CardComparisonModal({
                         href={card.sourceUrl}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
                       >
                         카드사 상세 보기 ↗
                       </a>
                     ) : (
-                      <span className="text-xs text-slate-400">-</span>
+                      <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
                     )}
                   </td>
                 ))}
@@ -401,11 +401,11 @@ export function CardComparisonModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end border-t border-slate-200/80 bg-slate-50 px-6 py-3.5">
+        <div className="flex justify-end border-t border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-6 py-3.5">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 cursor-pointer"
+            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs transition hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
           >
             닫기
           </button>

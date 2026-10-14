@@ -20,8 +20,8 @@ function MiniCardThumbnail({
   const showImage = card.imageUrl && !imgError;
 
   return (
-    <div className="relative flex items-center gap-2.5 rounded-xl border border-indigo-100 bg-indigo-50/60 p-2 pr-3 transition hover:border-indigo-300">
-      <div className="flex h-10 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white p-1 shadow-xs">
+    <div className="relative flex items-center gap-2.5 rounded-xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/60 dark:bg-slate-800/80 p-2 pr-3 transition hover:border-indigo-300 dark:hover:border-indigo-700">
+      <div className="flex h-10 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white dark:bg-slate-950 p-1 shadow-xs">
         {showImage ? (
           <img
             src={card.imageUrl}
@@ -30,14 +30,14 @@ function MiniCardThumbnail({
             className="h-full w-auto object-contain"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center rounded bg-indigo-100 text-[10px] font-bold text-indigo-500">
+          <div className="flex h-full w-full items-center justify-center rounded bg-indigo-100 dark:bg-indigo-950 text-[10px] font-bold text-indigo-500 dark:text-indigo-400">
             CARD
           </div>
         )}
       </div>
       <div className="min-w-0 max-w-[120px] sm:max-w-[160px]">
-        <p className="truncate text-[11px] font-medium text-indigo-600">{card.issuer}</p>
-        <p className="truncate text-xs font-semibold text-slate-800" title={card.name}>
+        <p className="truncate text-[11px] font-medium text-indigo-600 dark:text-indigo-400">{card.issuer}</p>
+        <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100" title={card.name}>
           {card.name}
         </p>
       </div>
@@ -45,7 +45,7 @@ function MiniCardThumbnail({
         type="button"
         onClick={() => onRemove(card.sourceId)}
         aria-label={`${card.name} 비교함에서 제거`}
-        className="ml-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-slate-400 transition hover:bg-rose-100 hover:text-rose-600"
+        className="ml-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-slate-400 transition hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/60 dark:hover:text-rose-400"
       >
         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -70,7 +70,7 @@ export function CardComparisonDrawer({
     <aside
       aria-label="카드 비교 서랍"
       aria-live="polite"
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/90 bg-white/95 p-3 shadow-2xl backdrop-blur-md transition-all duration-300 sm:p-4"
+      className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 p-3 shadow-2xl backdrop-blur-md transition-all duration-300 sm:p-4"
     >
       <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-between gap-2 sm:justify-start">
@@ -79,10 +79,10 @@ export function CardComparisonDrawer({
               {selectedCards.length}
             </span>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-slate-800">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
                 카드 비교함 ({selectedCards.length}/{MAX_COMPARE_COUNT})
               </span>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-slate-400 dark:text-slate-500">
                 {canCompare ? "카드를 비교할 준비가 되었습니다." : "비교하려면 1장 이상 더 담아주세요."}
               </span>
             </div>
@@ -90,7 +90,7 @@ export function CardComparisonDrawer({
           <button
             type="button"
             onClick={onClear}
-            className="text-xs font-medium text-slate-400 underline-offset-2 hover:text-rose-500 hover:underline sm:hidden"
+            className="text-xs font-medium text-slate-400 underline-offset-2 hover:text-rose-500 dark:hover:text-rose-400 hover:underline sm:hidden"
           >
             전체 비우기
           </button>
@@ -104,7 +104,7 @@ export function CardComparisonDrawer({
           {Array.from({ length: emptySlotsCount }).map((_, idx) => (
             <div
               key={`empty-slot-${idx}`}
-              className="flex h-[58px] min-w-[130px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-3 text-center text-xs text-slate-400 sm:min-w-[150px]"
+              className="flex h-[58px] min-w-[130px] items-center justify-center rounded-xl border border-dashed border-slate-200 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/40 px-3 text-center text-xs text-slate-400 dark:text-slate-500 sm:min-w-[150px]"
             >
               + 카드 추가 ({selectedCards.length + idx + 1}번째)
             </div>
@@ -115,7 +115,7 @@ export function CardComparisonDrawer({
           <button
             type="button"
             onClick={onClear}
-            className="hidden rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-500 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 sm:block"
+            className="hidden rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 dark:hover:border-rose-800 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 sm:block"
           >
             전체 비우기
           </button>
@@ -125,8 +125,8 @@ export function CardComparisonDrawer({
             onClick={onOpenModal}
             className={`flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-xs font-bold shadow-sm transition ${
               canCompare
-                ? "cursor-pointer bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700 hover:shadow-md"
-                : "cursor-not-allowed bg-slate-100 text-slate-400"
+                ? "cursor-pointer bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700 dark:shadow-none hover:shadow-md"
+                : "cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500"
             }`}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
