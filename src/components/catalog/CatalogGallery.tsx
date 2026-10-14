@@ -125,10 +125,10 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
 
   return (
     <section className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:flex-row sm:items-center sm:gap-4">
         <div className="relative flex-1">
           <svg
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -143,7 +143,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
               resetPaging();
             }}
             placeholder="카드 이름 또는 카드사로 검색"
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-9 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 py-2.5 pl-9 pr-9 text-sm text-slate-800 dark:text-slate-100 outline-none transition focus:border-indigo-400 focus:bg-white dark:focus:bg-slate-800/90 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/40"
           />
           {query && (
             <button
@@ -153,7 +153,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
                 setQuery("");
                 resetPaging();
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -168,7 +168,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
             setIssuer(e.target.value);
             resetPaging();
           }}
-          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-indigo-400 focus:bg-white dark:focus:bg-slate-800/90 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/40"
         >
           <option value="">전체 카드사</option>
           {catalogIssuers.map((i) => (
@@ -184,7 +184,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
             setType(e.target.value);
             resetPaging();
           }}
-          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-indigo-400 focus:bg-white dark:focus:bg-slate-800/90 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/40"
         >
           <option value="">전체 종류</option>
           {catalogTypes.map((t) => (
@@ -201,7 +201,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
             setSortOption(e.target.value as CatalogSortOption);
             resetPaging();
           }}
-          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-indigo-400 focus:bg-white dark:focus:bg-slate-800/90 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/40"
         >
           <option value="default">기본순</option>
           <option value="popular">인기순</option>
@@ -222,7 +222,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
           className={`flex items-center gap-1.5 rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
             hideInsufficient
               ? "border-indigo-500 bg-indigo-600 text-white"
-              : "border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
+              : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400"
           }`}
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -232,19 +232,19 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
         </button>
       </div>
 
-      <p className="text-sm text-slate-500">
-        총 <span className="font-semibold text-slate-800">{filtered.length.toLocaleString()}</span>개 카드
+      <p className="text-sm text-slate-500 dark:text-slate-400">
+        총 <span className="font-semibold text-slate-800 dark:text-slate-200">{filtered.length.toLocaleString()}</span>개 카드
         {hideInsufficient && (
-          <span className="ml-1 text-xs text-slate-400">
+          <span className="ml-1 text-xs text-slate-400 dark:text-slate-500">
             (연회비·혜택 정보가 없는 카드는 제외됨)
           </span>
         )}
       </p>
 
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center">
-          <p className="text-sm text-slate-500">조건에 맞는 카드가 없습니다.</p>
-          <p className="text-xs text-slate-400">검색어나 필터를 조정해 보세요.</p>
+        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-16 text-center">
+          <p className="text-sm text-slate-500 dark:text-slate-400">조건에 맞는 카드가 없습니다.</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">검색어나 필터를 조정해 보세요.</p>
         </div>
       ) : (
         <>
@@ -268,7 +268,7 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
               <button
                 type="button"
                 onClick={() => setVisibleCount((v) => Math.min(v + PAGE_SIZE, filtered.length))}
-                className="mx-auto rounded-lg border border-slate-200 bg-white px-6 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600"
+                className="mx-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-6 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm transition hover:border-indigo-300 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400"
               >
                 더 보기 ({filtered.length - visibleCount}개 남음)
               </button>
