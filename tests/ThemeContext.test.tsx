@@ -186,4 +186,51 @@ describe("다크 모드 테마 시스템 (ThemeContext & ThemeToggle)", () => {
     expect(screen.getByTestId("theme-val").textContent).toBe("system");
     expect(screen.getByTestId("resolved-val").textContent).toBe("light");
   });
+
+  it("localStorage에 유효하지 않은 테마 값이 저장되어 있으면 fallback 테마를 사용한다", () => {
+    window.localStorage.setItem("theme-mode", "invalid-theme-value");
+    render(
+      <ThemeProvider defaultTheme="light">
+        <TestConsumer />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByTestId("theme-val").textContent).toBe("light");
+    expect(screen.getByTestId("resolved-val").textContent).toBe("light");
+  });
+
+  it("localStorage 쓰기 오류가 발생해도 예외를 던지지 않고 테마 상태를 안전하게 전환한다", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError");
+    });
+
+    render(
+      <ThemeProvider>
+        <TestConsumer />
+      </ThemeProvider>,
+    );
+
+    expect(() => {
+      fireEvent.click(screen.getByRole("button", { name: "다크" }));
+    }).not.toThrow();
+
+    expect(screen.getByTestId("theme-val").textContent).toBe("dark");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+  });
+
+  it("ThemeToggle의 모든 옵션 버튼이 title 및 aria-label 속성을 올바르게 갖추고 있다", () => {
+    render(
+      <ThemeProvider>
+        <ThemeToggle />
+      </ThemeProvider>,
+    );
+
+    const lightBtn = screen.getByRole("button", { name: "라이트 모드" });
+    const darkBtn = screen.getByRole("button", { name: "다크 모드" });
+    const systemBtn = screen.getByRole("button", { name: "시스템 설정 동기화" });
+
+    expect(lightBtn).toHaveAttribute("title", "라이트 모드");
+    expect(darkBtn).toHaveAttribute("title", "다크 모드");
+    expect(systemBtn).toHaveAttribute("title", "시스템 설정 동기화");
+  });
 });
