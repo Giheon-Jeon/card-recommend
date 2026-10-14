@@ -25,10 +25,10 @@ export function CatalogCardTile({
   return (
     <div
       style={{ contentVisibility: "auto", containIntrinsicSize: "320px" }}
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white dark:bg-slate-900 text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${
         isCompared
-          ? "border-amber-400 ring-2 ring-amber-300/80 shadow-amber-100"
-          : "border-slate-200/80 hover:border-indigo-200 hover:shadow-indigo-100"
+          ? "border-amber-400 ring-2 ring-amber-300/80 shadow-amber-100 dark:shadow-none"
+          : "border-slate-200/80 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-700/60 hover:shadow-indigo-100 dark:hover:shadow-none"
       }`}
     >
       <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5">
@@ -43,8 +43,8 @@ export function CatalogCardTile({
             }}
             className={`flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-semibold shadow-sm backdrop-blur transition cursor-pointer ${
               isCompared
-                ? "bg-amber-500 text-white shadow-amber-200 hover:bg-amber-600"
-                : "bg-white/90 text-slate-500 hover:bg-white hover:text-amber-600"
+                ? "bg-amber-500 text-white shadow-amber-200 dark:shadow-none hover:bg-amber-600"
+                : "bg-white/90 dark:bg-slate-800/90 text-slate-500 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:text-amber-600 dark:hover:text-amber-400"
             }`}
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -70,7 +70,7 @@ export function CatalogCardTile({
           className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full shadow-sm backdrop-blur transition ${
             inMyCards
               ? "bg-indigo-600 text-white hover:bg-indigo-700"
-              : "bg-white/90 text-slate-400 hover:bg-white hover:text-indigo-600"
+              : "bg-white/90 dark:bg-slate-800/90 text-slate-400 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400"
           }`}
         >
           {inMyCards ? (
@@ -91,7 +91,7 @@ export function CatalogCardTile({
         className="flex flex-1 flex-col text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
         aria-label={`${entry.name} 상세 정보 보기`}
       >
-        <div className="relative flex aspect-[1.586/1] w-full items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-5">
+        <div className="relative flex aspect-[1.586/1] w-full items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/60 dark:to-slate-800/20 p-5">
           {showImage ? (
             <img
               src={entry.imageUrl}
@@ -106,7 +106,7 @@ export function CatalogCardTile({
             </div>
           )}
           {entry.category && (
-            <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur">
+            <span className="absolute left-3 top-3 rounded-full bg-white/90 dark:bg-slate-800/90 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 shadow-sm backdrop-blur">
               {entry.category}
             </span>
           )}
@@ -114,8 +114,8 @@ export function CatalogCardTile({
 
         <div className="flex flex-1 flex-col gap-2 p-4 w-full">
           <div>
-            <p className="text-xs font-medium text-indigo-600">{entry.issuer || "카드사 미상"}</p>
-            <h3 className="mt-0.5 line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
+            <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400">{entry.issuer || "카드사 미상"}</p>
+            <h3 className="mt-0.5 line-clamp-2 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
               {entry.name}
             </h3>
           </div>
@@ -130,33 +130,33 @@ export function CatalogCardTile({
                 .map((badge, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/10"
+                    className="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-600/10 dark:ring-indigo-400/20"
                   >
                     {badge}
                   </span>
                 ))}
               {entry.benefitSummary.split(/,\s*/).filter(Boolean).length > 3 && (
-                <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                <span className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
                   +{entry.benefitSummary.split(/,\s*/).filter(Boolean).length - 3}
                 </span>
               )}
             </div>
           ) : (
-            <p className="line-clamp-2 flex-1 text-xs leading-relaxed text-slate-400">
+            <p className="line-clamp-2 flex-1 text-xs leading-relaxed text-slate-400 dark:text-slate-500">
               등록된 혜택 요약 정보가 없습니다.
             </p>
           )}
 
-          <div className="mt-auto flex flex-col gap-1 border-t border-slate-100 pt-2.5">
+          <div className="mt-auto flex flex-col gap-1 border-t border-slate-100 dark:border-slate-800 pt-2.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">연회비</span>
-              <span className="font-semibold text-slate-900">
+              <span className="text-slate-400 dark:text-slate-500">연회비</span>
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {entry.annualFee !== undefined ? formatWon(entry.annualFee) : "정보 없음"}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">실적 기준</span>
-              <span className="font-medium text-slate-700">
+              <span className="text-slate-400 dark:text-slate-500">실적 기준</span>
+              <span className="font-medium text-slate-700 dark:text-slate-300">
                 {entry.category === "체크" ? "전월 20만원 이상" : "전월 30만원 이상"}
               </span>
             </div>

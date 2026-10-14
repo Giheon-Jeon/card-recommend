@@ -124,13 +124,13 @@ export function CardDetailModal({
         onClick={onClose}
         className="fixed inset-0 h-full w-full bg-slate-900/50 backdrop-blur-sm -z-10 cursor-default border-none"
       />
-      <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl animate-[popIn_0.18s_ease-out]">
-        <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-6 py-8">
+      <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 dark:border dark:border-slate-800 shadow-2xl animate-[popIn_0.18s_ease-out]">
+        <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/80 dark:to-slate-800/40 px-6 py-8">
           <button
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-800"
+            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-300 shadow-sm transition hover:bg-white dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-100"
           >
             ✕
           </button>
@@ -150,30 +150,30 @@ export function CardDetailModal({
 
         <div className="flex flex-col gap-4 p-6">
           <div>
-            <p className="text-sm font-medium text-indigo-600">{entry.issuer || "카드사 미상"}</p>
-            <h2 id="card-modal-title" className="mt-1 text-xl font-bold text-slate-900">{entry.name}</h2>
+            <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">{entry.issuer || "카드사 미상"}</p>
+            <h2 id="card-modal-title" className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">{entry.name}</h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-4 text-sm">
+          <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4 text-sm">
             <div>
-              <p className="text-xs text-slate-400">카드 종류</p>
-              <p className="mt-0.5 font-medium text-slate-800">{entry.category || "정보 없음"}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">카드 종류</p>
+              <p className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{entry.category || "정보 없음"}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">연회비</p>
-              <p className="mt-0.5 font-medium text-slate-800">
+              <p className="text-xs text-slate-400 dark:text-slate-500">연회비</p>
+              <p className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">
                 {entry.annualFee !== undefined ? formatWon(entry.annualFee) : "정보 없음"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">실적 기준</p>
-              <p className="mt-0.5 font-medium text-slate-800">
+              <p className="text-xs text-slate-400 dark:text-slate-500">실적 기준</p>
+              <p className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">
                 {entry.category === "체크" ? "전월 20만원 이상" : "전월 30만원 이상"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">출처 링크</p>
-              <p className="mt-0.5 font-medium text-indigo-600">
+              <p className="text-xs text-slate-400 dark:text-slate-500">출처 링크</p>
+              <p className="mt-0.5 font-medium text-indigo-600 dark:text-indigo-400">
                 <a href={entry.sourceUrl} target="_blank" rel="noreferrer" className="hover:underline">
                   카드고릴라 제공 ↗
                 </a>
@@ -181,30 +181,30 @@ export function CardDetailModal({
             </div>
             {entry.annualFeeText && (
               <div className="col-span-2">
-                <p className="text-xs text-slate-400">연회비 상세</p>
-                <p className="mt-0.5 font-medium text-slate-800">{entry.annualFeeText}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">연회비 상세</p>
+                <p className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{entry.annualFeeText}</p>
               </div>
             )}
           </div>
 
           {entry.benefitSummary && (
             <div>
-              <p className="mb-1 text-xs font-semibold text-slate-400">혜택 요약</p>
-              <p className="text-sm leading-relaxed text-slate-700">{entry.benefitSummary}</p>
+              <p className="mb-1 text-xs font-semibold text-slate-400 dark:text-slate-500">혜택 요약</p>
+              <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{entry.benefitSummary}</p>
             </div>
           )}
 
           {benefits.length > 0 && (
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-slate-400">실적 구간별 혜택표</p>
-                <span className="text-[11px] font-medium text-indigo-600">
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">실적 구간별 혜택표</p>
+                <span className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
                   {entry.category === "체크" ? "전월 20만원 이상 충족 시" : "전월 30만원 이상 충족 시"}
                 </span>
               </div>
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
                 <table className="w-full text-left text-xs">
-                  <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-500">
+                  <thead className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 font-semibold text-slate-500 dark:text-slate-400">
                     <tr>
                       <th className="px-3 py-2">혜택 항목</th>
                       <th className="px-3 py-2">구분</th>
@@ -212,23 +212,23 @@ export function CardDetailModal({
                       <th className="px-3 py-2 text-right">월 한도</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
                     {benefits.map((b, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/50">
-                        <td className="px-3 py-2 font-medium text-slate-900">
+                      <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                        <td className="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">
                           {getCategoryLabel(b.category)}
                           {b.description && (
-                            <span className="block max-w-[170px] truncate text-[11px] font-normal text-slate-400">
+                            <span className="block max-w-[170px] truncate text-[11px] font-normal text-slate-400 dark:text-slate-500">
                               {b.description}
                             </span>
                           )}
                         </td>
                         <td className="px-3 py-2">
-                          <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                          <span className="inline-flex rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300">
                             {b.type === "discount" ? "할인" : b.type === "point" ? "적립" : "캐시백"}
                           </span>
                         </td>
-                        <td className="px-3 py-2 font-semibold text-indigo-600">
+                        <td className="px-3 py-2 font-semibold text-indigo-600 dark:text-indigo-400">
                           {(b.rate * 100).toFixed(1).replace(/\.0$/, "")}%
                         </td>
                         <td className="px-3 py-2 text-right">
@@ -246,9 +246,9 @@ export function CardDetailModal({
             <button
               type="button"
               onClick={() => onToggleMyCards(entry)}
-              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition cursor-pointer ${
                 inMyCards
-                  ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
+                  ? "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50"
                   : "bg-indigo-600 text-white hover:bg-indigo-700"
               }`}
             >
@@ -258,7 +258,7 @@ export function CardDetailModal({
               href={entry.sourceUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600"
+              className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 transition hover:border-indigo-300 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               상세보기 ↗
             </a>
