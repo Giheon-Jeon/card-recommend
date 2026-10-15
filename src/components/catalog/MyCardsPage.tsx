@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import type { CatalogEntry } from "@/types/catalog";
 import { useMyCards, downloadMyCardsBackup, parseAndValidateMyCardsBackup } from "@/lib/myCards";
 import { catalogCards } from "@/lib/loadCatalog";
@@ -16,6 +16,26 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
   const [importMode, setImportMode] = useState<"merge" | "overwrite">("merge");
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isImportModalOpen) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setIsImportModalOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isImportModalOpen]);
 
   const entries = useMemo(() => {
     const idSet = new Set(myCards.ids);
