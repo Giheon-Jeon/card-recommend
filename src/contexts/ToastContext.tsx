@@ -104,33 +104,33 @@ export function ToastProvider({ children }: ToastProviderProps) {
               aria-live="polite"
               className={`pointer-events-auto flex items-start justify-between gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md transition-all duration-300 ${
                 toast.type === "success"
-                  ? "border-emerald-200 bg-emerald-50/95 text-emerald-900 shadow-emerald-500/10"
+                  ? "border-emerald-200 bg-emerald-50/95 text-emerald-900 shadow-emerald-500/10 dark:border-emerald-800/80 dark:bg-emerald-950/95 dark:text-emerald-200 dark:shadow-emerald-950/30"
                   : toast.type === "error"
-                  ? "border-rose-200 bg-rose-50/95 text-rose-900 shadow-rose-500/10"
+                  ? "border-rose-200 bg-rose-50/95 text-rose-900 shadow-rose-500/10 dark:border-rose-800/80 dark:bg-rose-950/95 dark:text-rose-200 dark:shadow-rose-950/30"
                   : toast.type === "warning"
-                  ? "border-amber-200 bg-amber-50/95 text-amber-900 shadow-amber-500/10"
-                  : "border-indigo-200 bg-indigo-50/95 text-indigo-900 shadow-indigo-500/10"
+                  ? "border-amber-200 bg-amber-50/95 text-amber-900 shadow-amber-500/10 dark:border-amber-800/80 dark:bg-amber-950/95 dark:text-amber-200 dark:shadow-amber-950/30"
+                  : "border-indigo-200 bg-indigo-50/95 text-indigo-900 shadow-indigo-500/10 dark:border-indigo-800/80 dark:bg-indigo-950/95 dark:text-indigo-200 dark:shadow-indigo-950/30"
               }`}
             >
               <div className="flex items-start gap-3">
                 {toast.type === "success" && (
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                 )}
                 {toast.type === "error" && (
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
                 )}
                 {toast.type === "warning" && (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 )}
                 {toast.type === "info" && (
-                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
                 )}
                 <p className="text-xs font-semibold leading-relaxed whitespace-pre-wrap">{toast.message}</p>
               </div>
               <button
                 type="button"
                 onClick={() => dismissToast(toast.id)}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-black/5 hover:text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400 transition"
+                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-black/5 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-500 transition"
                 aria-label="알림 닫기"
               >
                 <X className="h-3.5 w-3.5" />

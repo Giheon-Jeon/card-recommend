@@ -209,4 +209,25 @@ describe("MyCardsPage Component", () => {
       expect(screen.getByRole("status")).toHaveTextContent("기존 카드를 대체하여 총 2장을 불러왔습니다.");
     });
   });
+
+  it("불러오기 모달에서 Escape 키 입력 시 모달이 닫히고 배경 스크롤이 복원되어야 한다", () => {
+    document.body.style.overflow = "auto";
+
+    render(
+      <ToastProvider>
+        <MyCardsPage myCards={mockMyCards} />
+      </ToastProvider>
+    );
+
+    const openModalBtn = screen.getByRole("button", { name: /불러오기/ });
+    fireEvent.click(openModalBtn);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("hidden");
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("auto");
+  });
 });

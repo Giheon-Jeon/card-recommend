@@ -186,4 +186,18 @@ describe("ToastContext & ToastProvider", () => {
       fireEvent.click(screen.getByRole("button", { name: "성공 알림" }));
     }).not.toThrow();
   });
+
+  it("토스트 렌더링 시 다크모드 대응 스타일 클래스가 적용되어야 한다", () => {
+    render(
+      <ToastProvider>
+        <TestToastConsumer />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "성공 알림" }));
+    const toastItem = screen.getByRole("status");
+    expect(toastItem.className).toContain("dark:border-emerald-800/80");
+    expect(toastItem.className).toContain("dark:bg-emerald-950/95");
+    expect(toastItem.className).toContain("dark:text-emerald-200");
+  });
 });
