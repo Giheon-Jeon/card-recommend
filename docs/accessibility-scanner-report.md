@@ -84,9 +84,20 @@ Oxlint JSX-A11y 및 Axe-core 점검을 통해 기존 주요 컴포넌트들의 �
 
 ## 6. 테스트 및 검증 결과
 
-1. **정적 접근성 린터 (`npm run lint:a11y`)**:
-   - 검사 파일 44개 대상 151개 규칙 검사 완료
+1. **정적 접근성 린터 (`npm run lint:a11y` / `npx oxlint -D jsx-a11y`)**:
+   - 검사 파일 74개 대상 151개 규칙 검사 완료
    - `jsx-a11y` 위반 오류 및 경고: **0건 (완전 무결)**
 2. **컴포넌트 자동화 단위 테스트 (`npm test`)**:
-   - `tests/a11y.test.tsx` 포함 14개 테스트 파일, 총 72개 테스트 **100% 통과 (Pass)**
-   - axe-core WCAG 2.1 A/AA 위반 사항 **0건**
+   - `tests/a11y.test.tsx` 포함 26개 테스트 파일, 총 244개 테스트 **100% 통과 (Pass)**
+   - axe-core WCAG 2.1 Level A/AA 위반 사항 **0건**
+
+---
+
+## 7. 71번 이슈: 전역 토스트 시스템 및 모달 접근성 고도화 결과
+
+| 대상 컴포넌트 | 접근성 구현 및 강화 사항 | 세부 내용 |
+| :--- | :--- | :--- |
+| **`ToastContext` (전역 알림)** | WAI-ARIA 라이브 리전 및 시맨틱 롤 적용 | - 에러/경고: `role="alert"`, 성공/정보: `role="status"` 자동 분기<br>- `aria-live="polite"`로 스크린 리더 음성 중단 없이 자연스러운 청취 보장<br>- 닫기 버튼에 `aria-label="알림 닫기"` 명시 및 다크모드 대비 최적화 |
+| **`CardDetailModal` & `CardComparisonModal`** | 키보드 내비게이션 & 포커스 트랩 | - `Escape` 키 입력 시 즉각 모달 닫힘<br>- `Tab` / `Shift+Tab` 입력 시 모달 내 포커서블 요소 간 무한 순환(Focus Trap)<br>- 모달 오픈 시 첫 포커서블 요소 자동 포커스 및 닫힘 시 직전 트리거 요소로 포커스 복원<br>- `document.body.style.overflow = "hidden"`으로 모달 활성화 시 배경 스크롤 차단 |
+| **`MyCardsPage` (백업 불러오기 모달)** | 모달 키보드 닫기 및 스크롤 차단 | - 백업 JSON 불러오기 모달 오픈 시 `Escape` 키 입력으로 닫기 지원<br>- 모달 열림 시 배경 스크롤 잠금 및 닫힘/언마운트 시 자동 복원 |
+
