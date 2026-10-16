@@ -6,6 +6,7 @@ import { CatalogCardTile } from "@/components/catalog/CatalogCardTile";
 import { CardDetailModal } from "@/components/catalog/CardDetailModal";
 import { ParsedItemsTable } from "@/components/ParsedItemsTable";
 import { SpendingImporter } from "@/components/SpendingImporter";
+import { SpendingSimulator } from "@/components/SpendingSimulator";
 import type { CatalogCardEntry } from "@/types/catalog";
 
 // Axe 실행 헬퍼: 가상 DOM 환경(happy-dom)에서 지원되지 않는 색상 대비 등 제외한 표준 WCAG 검사
@@ -179,6 +180,20 @@ describe("Accessibility (a11y) Automated Tests with axe-core", () => {
       <SpendingImporter
         categories={dummyCategories}
         onImport={() => {}}
+      />
+    );
+    const violations = await checkA11y(container);
+    expect(violations).toEqual([]);
+  });
+
+  it("SpendingSimulator 및 SpendingPresetSelector 컴포넌트는 WCAG 접근성 위반 사항이 없어야 한다", async () => {
+    const { container } = render(
+      <SpendingSimulator
+        categories={dummyCategories}
+        spending={{ cafe: 50000, transport: 70000 }}
+        onChange={() => {}}
+        onReset={() => {}}
+        onApplyPreset={() => {}}
       />
     );
     const violations = await checkA11y(container);
