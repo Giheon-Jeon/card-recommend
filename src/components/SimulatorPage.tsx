@@ -28,7 +28,7 @@ interface SimulatorPageProps {
  * 대상으로 지출 프로필 기준 최적 카드를 계산해 보여줍니다.
  */
 export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
-  const { spending, updateCategory, resetSpending, applyImportedItems } =
+  const { spending, updateCategory, resetSpending, applyImportedItems, applyPreset } =
     useSpendingProfile(categories);
   const [cardTypes, setCardTypes] = useState<CardType[]>(ALL_CARD_TYPES);
   const [scope, setScope] = useState<SimulatorScope>("myCards");
@@ -147,6 +147,7 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
             spending={spending}
             onChange={updateCategory}
             onReset={resetSpending}
+            onApplyPreset={applyPreset}
           />
           <RecommendationResult
             ranked={ranked}
