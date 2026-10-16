@@ -161,4 +161,20 @@ describe("SpendingSimulator Component Smoke Test", () => {
     expect(screen.getByText("최대 300만")).toBeInTheDocument();
     expect(screen.getByText("최대 500만")).toBeInTheDocument();
   });
+
+  it("onApplyPreset 전달 시 상단에 라이프스타일 지출 프리셋 선택기가 함께 렌더링되어야 한다", () => {
+    const mockOnApplyPreset = vi.fn();
+    render(
+      <SpendingSimulator
+        categories={mockCategories}
+        spending={mockSpending}
+        onChange={mockOnChange}
+        onApplyPreset={mockOnApplyPreset}
+      />
+    );
+
+    expect(screen.getByText("라이프스타일 원클릭 지출 프리셋")).toBeInTheDocument();
+    expect(screen.getByText("1인 가구 자취생")).toBeInTheDocument();
+    expect(screen.getByText("직장인 통근러")).toBeInTheDocument();
+  });
 });
