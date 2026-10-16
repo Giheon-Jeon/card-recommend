@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Category, SpendingProfile } from "@/types/card";
 import type { ParsedSpendingItem } from "@/lib/importerParser";
+import { buildProfileFromPreset, type SpendingPreset } from "@/lib/spendingPresets";
 
 export const SPENDING_STORAGE_KEY = "card-recommend:spending-profile";
 
@@ -131,11 +132,22 @@ export function useSpendingProfile(categories: Category[]) {
     [categories],
   );
 
+  const applyPreset = useCallback(
+    (preset: SpendingPreset) => {
+      const next = buildProfileFromPreset(preset, categories);
+      setSpendingState(next);
+      writeStoredSpending(next);
+      return next;
+    },
+    [categories],
+  );
+
   return {
     spending,
     updateCategory,
     setSpending,
     resetSpending,
     applyImportedItems,
+    applyPreset,
   };
 }
