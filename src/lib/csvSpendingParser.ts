@@ -1,4 +1,9 @@
 import { KEYWORD_MAP, type ParsedSpendingItem } from "@/lib/importerParser";
+import {
+  matchCustomMerchantRule,
+  getStoredMerchantRules,
+  type CustomMerchantRule,
+} from "@/lib/merchantRules";
 
 /**
  * [Issue #63] 카드사 결제 내역 CSV 파일 업로드 및 자동 인코딩/카테고리 파싱
@@ -293,11 +298,22 @@ const SECTOR_CATEGORY_MAP: Record<string, string> = {
 
 /**
  * 가맹점명 및 업종명을 바탕으로 카테고리 자동 추론
+ * [Issue #85] 커스텀 가맹점 룰이 있는 경우 기본 사전보다 최우선으로 매칭
  */
-export function inferCategory(merchant: string, sector?: string): string {
+export function inferCategory(
+  merchant: string,
+  sector?: string,
+  customRules?: CustomMerchantRule[]
+): string {
+  // 1) 사용자 정의 가맹점 분류 룰 1차 우선 매칭
+  const customMatch = matchCustomMerchantRule(merchant, sector, customRules);
+  if (customMatch) {
+    return customMatch.category;
+  }
+
   const targetText = `${merchant} ${sector || ""}`.toLowerCase();
 
-  // 1) 업종명 기반 1차 매칭
+  // 2) 업종명 기반 2차 매칭
   if (sector) {
     const sectorClean = sector.replace(/\s+/g, "");
     for (const [kw, cat] of Object.entries(SECTOR_CATEGORY_MAP)) {
@@ -307,7 +323,7 @@ export function inferCategory(merchant: string, sector?: string): string {
     }
   }
 
-  // 2) 가맹점명 및 업종명을 기존 KEYWORD_MAP과 대조
+  // 3) 가맹점명 및 업종명을 기존 KEYWORD_MAP과 대조
   for (const [category, keywords] of Object.entries(KEYWORD_MAP)) {
     for (const kw of keywords) {
       if (targetText.includes(kw.toLowerCase())) {
@@ -323,7 +339,10 @@ export function inferCategory(merchant: string, sector?: string): string {
  * CSV 전체 파싱 메인 함수
  * CSV 문자열을 받아 카드사별 규격 자동 인식 후 ParsedSpendingItem 목록 반환
  */
-export function parseCsvContent(csvText: string): ParsedSpendingItem[] {
+export function parseCsvContent(
+  csvText: string,
+  customRules?: CustomMerchantRule[]
+): ParsedSpendingItem[] {
   const rows = parseCsvRows(csvText);
   if (rows.length === 0) return [];
 
@@ -334,6 +353,7 @@ export function parseCsvContent(csvText: string): ParsedSpendingItem[] {
     );
   }
 
+  const effectiveRules = customRules !== undefined ? customRules : getStoredMerchantRules();
   const { headerIndex, merchantCol, amountCol, statusCol, categoryCol } = mapping;
   const items: ParsedSpendingItem[] = [];
 
@@ -357,8 +377,8 @@ export function parseCsvContent(csvText: string): ParsedSpendingItem[] {
     const amount = parseAmountValue(rawAmount, rawStatus);
     if (amount === 0) continue; // 금액이 0원인 건 제외
 
-    // 카테고리 자동 추론
-    const category = inferCategory(merchant, rawSector);
+    // 카테고리 자동 추론 (커스텀 룰 최우선 적용)
+    const category = inferCategory(merchant, rawSector, effectiveRules);
 
     items.push({
       merchant,
@@ -373,7 +393,10 @@ export function parseCsvContent(csvText: string): ParsedSpendingItem[] {
 /**
  * 브라우저 File 객체를 읽고 파싱하는 비동기 래퍼 함수
  */
-export async function parseCsvFile(file: File): Promise<ParsedSpendingItem[]> {
+export async function parseCsvFile(
+  file: File,
+  customRules?: CustomMerchantRule[]
+): Promise<ParsedSpendingItem[]> {
   const validation = validateCsvFile(file);
   if (!validation.isValid) {
     throw new Error(validation.error);
@@ -381,7 +404,7 @@ export async function parseCsvFile(file: File): Promise<ParsedSpendingItem[]> {
 
   const buffer = await file.arrayBuffer();
   const decodedText = decodeCsvBuffer(buffer);
-  const items = parseCsvContent(decodedText);
+  const items = parseCsvContent(decodedText, customRules);
 
   if (items.length === 0) {
     throw new Error("CSV 파일 내에서 유효한 결제 내역을 찾을 수 없습니다.");

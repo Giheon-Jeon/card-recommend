@@ -1,5 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { ParsedSpendingItem } from "@/types/importer";
+import {
+  matchCustomMerchantRule,
+  getStoredMerchantRules,
+  type CustomMerchantRule,
+} from "@/lib/merchantRules";
 
 export type { ParsedSpendingItem };
 
@@ -19,11 +24,13 @@ export const KEYWORD_MAP: { [category: string]: string[] } = {
 /**
  * 로컬 정규식 & 키워드 휴리스틱 파서
  * SMS 결제 문자, 카카오톡 알림톡, 텍스트 형태의 지출 기록을 한 줄씩 분석합니다.
+ * [Issue #85] 사용자 커스텀 가맹점 분류 룰을 1순위로 우선 적용합니다.
  */
-export function parseTextLocally(text: string): ParsedSpendingItem[] {
+export function parseTextLocally(text: string, customRules?: CustomMerchantRule[]): ParsedSpendingItem[] {
   const lines = text.split("\n");
   const results: ParsedSpendingItem[] = [];
   const REFUND_KEYWORD_REGEX = /(?:승인취소|결제취소|취소완료|취소|환불)/i;
+  const effectiveRules = customRules !== undefined ? customRules : getStoredMerchantRules();
 
   for (let line of lines) {
     line = line.trim();
@@ -86,8 +93,9 @@ export function parseTextLocally(text: string): ParsedSpendingItem[] {
 
     let merchant = "기타 가맹점";
 
-    // 1) afterTokens 중 KEYWORD_MAP에 직접 매칭되는 브랜드/상호명이 있다면 우선 선택 (예: "결제취소 홍길동 15,000원 스타벅스")
+    // 1) afterTokens 중 커스텀 룰 또는 KEYWORD_MAP에 직접 매칭되는 브랜드/상호명이 있다면 우선 선택
     const matchedAfter = afterTokens.find(token =>
+      matchCustomMerchantRule(token, undefined, effectiveRules) ||
       Object.values(KEYWORD_MAP).some(kws => kws.some(kw => token.toLowerCase().includes(kw.toLowerCase())))
     );
 
@@ -102,19 +110,28 @@ export function parseTextLocally(text: string): ParsedSpendingItem[] {
       merchant = afterTokens[0];
     }
 
-    // 카테고리 매칭
+    // 카테고리 매칭: [Issue #85] 1순위 커스텀 룰 매칭 -> 2순위 기본 KEYWORD_MAP 매칭
     let category = "etc";
     let matched = false;
 
-    for (const [catId, keywords] of Object.entries(KEYWORD_MAP)) {
-      for (const keyword of keywords) {
-        if (merchant.toLowerCase().includes(keyword.toLowerCase()) || line.toLowerCase().includes(keyword.toLowerCase())) {
-          category = catId;
-          matched = true;
-          break;
+    const customMatch =
+      matchCustomMerchantRule(merchant, undefined, effectiveRules) ||
+      matchCustomMerchantRule(line, undefined, effectiveRules);
+
+    if (customMatch) {
+      category = customMatch.category;
+      matched = true;
+    } else {
+      for (const [catId, keywords] of Object.entries(KEYWORD_MAP)) {
+        for (const keyword of keywords) {
+          if (merchant.toLowerCase().includes(keyword.toLowerCase()) || line.toLowerCase().includes(keyword.toLowerCase())) {
+            category = catId;
+            matched = true;
+            break;
+          }
         }
+        if (matched) break;
       }
-      if (matched) break;
     }
 
     results.push({

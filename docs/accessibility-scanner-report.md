@@ -85,10 +85,10 @@ Oxlint JSX-A11y 및 Axe-core 점검을 통해 기존 주요 컴포넌트들의 �
 ## 6. 테스트 및 검증 결과
 
 1. **정적 접근성 린터 (`npm run lint:a11y` / `npx oxlint -D jsx-a11y`)**:
-   - 검사 파일 78개 대상 151개 규칙 검사 완료
+   - 검사 파일 83개 대상 151개 규칙 검사 완료
    - `jsx-a11y` 위반 오류 및 경고: **0건 (완전 무결)**
 2. **컴포넌트 자동화 단위 테스트 (`npm test`)**:
-   - `tests/a11y.test.tsx` 포함 28개 테스트 파일, 총 261개 테스트 **100% 통과 (Pass)**
+   - `tests/a11y.test.tsx` 포함 31개 테스트 파일, 총 295개 테스트 **100% 통과 (Pass)**
    - axe-core WCAG 2.1 Level A/AA 위반 사항 **0건**
 
 ---
@@ -109,5 +109,14 @@ Oxlint JSX-A11y 및 Axe-core 점검을 통해 기존 주요 컴포넌트들의 �
 | :--- | :--- | :--- |
 | **`SpendingPresetSelector` (프리셋 선택기)** | WAI-ARIA 토글 버튼 및 명확한 스크린 리더 라벨링 | - 각 프리셋 버튼에 `aria-pressed` 상태를 적용하여 현재 적용된 프리셋 여부를 보조공학기기에 전달<br>- `aria-label`에 프리셋 명칭과 함께 예상 월 총액(`800,000원`)을 명시하여 직관적인 음성 안내 제공<br>- 고유 키보드 포커스 링(`focus:ring-2 focus:ring-indigo-500`) 및 다크모드 테마 색상 최적화 |
 | **`PresetConfirmModal` (덮어쓰기 대화상자)** | HTML5 시맨틱 `<dialog>` 및 포커스 트랩 | - 시맨틱 `<dialog>` 태그, `aria-modal="true"`, `aria-labelledby`, `aria-describedby` 규격 준수<br>- `Escape` 키 입력 시 즉각 모달 닫기 지원 및 모달 활성화 시 배경 스크롤 차단<br>- `Tab` / `Shift+Tab` 키 입력 시 모달 내부 취소/적용 버튼 사이 포커스 트랩 순환<br>- 모달 닫힘 시 직전에 클릭했던 프리셋 버튼으로 포커스 복원(Focus Restoration) 보장<br>- `tests/a11y.test.tsx`에서 axe-core 기반 WCAG 2.1 위반 0건 검증 완료 |
+
+---
+
+## 9. 85번 이슈: 가맹점 자동 분류 규칙 사전 모달 접근성 고도화 결과
+
+| 대상 컴포넌트 | 접근성 구현 및 강화 사항 | 세부 내용 |
+| :--- | :--- | :--- |
+| **`MerchantRulesModal` (분류 규칙 사전 모달)** | HTML5 시맨틱 `<dialog>` 및 포커스 트랩 | - 시맨틱 `<dialog>` 태그, `aria-modal="true"`, `aria-labelledby="merchant-rules-title"`, `aria-describedby="merchant-rules-desc"` 준수<br>- `Escape` 키 입력 시 즉각 닫힘 및 모달 오픈 시 배경 스크롤 잠금(`overflow = "hidden"`), 닫힘 시 직전 트리거 요소로 포커스 복원<br>- 모달 내부 포커서블 요소 간 `Tab` / `Shift+Tab` 무한 순환 포커스 트랩 완벽 구현 |
+| **규칙 등록 및 인라인 수정 폼** | 명확한 폼 컨트롤 라벨링 (`aria-label`) | - 신규 등록 인풋, 카테고리 셀렉트, 검색창, 인라인 수정 인풋/셀렉트 및 파일 업로드 input에 `aria-label` 전면 부여<br>- 에러 메시지 발생 시 보조공학기기 인지가 가능하도록 명확한 에러 텍스트 피드백 제공<br>- `tests/a11y.test.tsx`에서 axe-core 기반 WCAG 2.1 Level A/AA 규격 위반 0건 무결점 통과 |
 
 
