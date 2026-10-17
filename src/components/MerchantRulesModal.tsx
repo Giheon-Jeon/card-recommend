@@ -46,7 +46,7 @@ export function MerchantRulesModal({
   categories,
   onRulesChanged,
 }: MerchantRulesModalProps) {
-  const [rules, setRules] = useState<CustomMerchantRule[]>([]);
+  const [rules, setRules] = useState<CustomMerchantRule[]>(() => getStoredMerchantRules());
   const [newKeyword, setNewKeyword] = useState("");
   const [newCategory, setNewCategory] = useState<string>(categories[0]?.id || "dining");
   const [keywordError, setKeywordError] = useState<string | null>(null);
@@ -346,6 +346,7 @@ export function MerchantRulesModal({
                 <input
                   type="text"
                   value={newKeyword}
+                  aria-label="가맹점 키워드 입력"
                   onChange={(e) => {
                     setNewKeyword(e.target.value);
                     if (keywordError) setKeywordError(null);
@@ -358,6 +359,7 @@ export function MerchantRulesModal({
               <div className="sm:w-44">
                 <select
                   value={newCategory}
+                  aria-label="카테고리 선택"
                   onChange={(e) => setNewCategory(e.target.value)}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
@@ -404,6 +406,7 @@ export function MerchantRulesModal({
                   <input
                     type="text"
                     value={searchQuery}
+                    aria-label="분류 규칙 검색"
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="규칙 또는 카테고리 검색..."
                     className="w-full rounded-md border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-hidden dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200"
@@ -442,11 +445,13 @@ export function MerchantRulesModal({
                             <input
                               type="text"
                               value={editKeyword}
+                              aria-label="수정할 가맹점 키워드"
                               onChange={(e) => setEditKeyword(e.target.value)}
                               className="flex-1 rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-800 focus:border-indigo-500 focus:outline-hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                             />
                             <select
                               value={editCategory}
+                              aria-label="수정할 카테고리"
                               onChange={(e) => setEditCategory(e.target.value)}
                               className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-800 focus:border-indigo-500 focus:outline-hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                             >
@@ -568,6 +573,7 @@ export function MerchantRulesModal({
               ref={fileInputRef}
               type="file"
               accept=".json,application/json"
+              aria-label="가맹점 분류 규칙 백업 파일 업로드"
               onChange={handleFileChange}
               className="hidden"
             />
