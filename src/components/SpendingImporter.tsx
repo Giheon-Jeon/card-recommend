@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, FileText, AlertCircle, ArrowRight, HelpCircle, Zap, RefreshCw, FileSpreadsheet } from "lucide-react";
+import { Upload, FileText, AlertCircle, ArrowRight, HelpCircle, Zap, RefreshCw, FileSpreadsheet, SlidersHorizontal } from "lucide-react";
 import {
   parseTextLocally,
   parseWithGemini,
@@ -10,6 +10,7 @@ import { parseCsvFile, validateCsvFile } from "@/lib/csvSpendingParser";
 import type { Category } from "@/types/card";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { ParsedItemsTable } from "@/components/ParsedItemsTable";
+import { MerchantRulesModal } from "@/components/MerchantRulesModal";
 import { useGeminiApiKey } from "@/hooks/useGeminiApiKey";
 import { useToast } from "@/hooks/useToast";
 import type { StorageType } from "@/contexts/geminiApiKeyContextDef";
@@ -51,6 +52,9 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
   const [selectedCsvFile, setSelectedCsvFile] = useState<File | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [isCsvDragOver, setIsCsvDragOver] = useState(false);
+
+  // [Issue #85] 가맹점 자동 분류 규칙 모달 상태
+  const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
 
   const { apiKey: savedApiKey, storageType: savedStorageType, saveApiKey, removeApiKey } = useGeminiApiKey();
   const toast = useToast();
@@ -351,13 +355,25 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
           </p>
         </div>
 
-        <ApiKeySettings
-          apiKey={draftApiKey}
-          storageType={savedStorageType}
-          onChange={setDraftApiKey}
-          onSave={handleSaveApiKey}
-          onRemove={handleRemoveApiKey}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsRulesModalOpen(true)}
+            aria-label="가맹점 자동 분류 규칙 설정"
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs font-bold text-slate-700 shadow-2xs transition-all duration-200 hover:border-indigo-300 hover:bg-white hover:text-indigo-600 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-indigo-500" />
+            <span>분류 규칙 사전</span>
+          </button>
+
+          <ApiKeySettings
+            apiKey={draftApiKey}
+            storageType={savedStorageType}
+            onChange={setDraftApiKey}
+            onSave={handleSaveApiKey}
+            onRemove={handleRemoveApiKey}
+          />
+        </div>
       </div>
 
       {/* Tabs */}
@@ -703,6 +719,13 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
           />
         </ErrorBoundary>
       )}
+
+      {/* 가맹점 분류 규칙 관리 모달 */}
+      <MerchantRulesModal
+        isOpen={isRulesModalOpen}
+        onClose={() => setIsRulesModalOpen(false)}
+        categories={categories}
+      />
     </section>
   );
 }
