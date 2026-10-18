@@ -4,6 +4,11 @@ import type { Category } from "@/types/card";
 import type { CardEvaluation, CategoryWinner } from "@/types/recommendation";
 import type { PortfolioResult } from "@/types/portfolio";
 import { PortfolioRecommendationView } from "@/components/PortfolioRecommendation";
+import { RecommendationShareButton } from "@/components/RecommendationShareButton";
+import {
+  formatSingleRecommendationSummary,
+  formatPortfolioRecommendationSummary,
+} from "@/lib/recommendationShare";
 
 interface RecommendationResultProps {
   ranked: CardEvaluation[];
@@ -35,6 +40,20 @@ export function RecommendationResult({
     portfolioResult?.trio?.benefitIncreaseVsSingle ?? 0,
   );
 
+  // 현재 활성화된 추천 결과에 맞춘 텍스트 생성기
+  const handleGenerateShareText = (options: { includeSpendDetails?: boolean }) => {
+    if (activeTab === "portfolio" && (portfolioResult?.pair || portfolioResult?.trio)) {
+      const activePort = portfolioResult.pair ?? portfolioResult.trio!;
+      return formatPortfolioRecommendationSummary(activePort, categories, options);
+    }
+    if (top) {
+      return formatSingleRecommendationSummary(top, categoryWinners, categories, options);
+    }
+    return "전월실적 조건을 충족하는 카드가 없습니다.";
+  };
+
+  const canShare = activeTab === "portfolio" ? hasPortfolio : Boolean(top);
+
   return (
     <section
       aria-label="추천 결과 섹션"
@@ -49,45 +68,60 @@ export function RecommendationResult({
           </p>
         </div>
 
-        {hasPortfolio && (
-          <div
-            role="tablist"
-            aria-label="추천 방식 선택"
-            className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800 self-start sm:self-auto"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "single"}
-              onClick={() => setActiveTab("single")}
-              className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
-                activeTab === "single"
-                  ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-white"
-                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-              }`}
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          {hasPortfolio && (
+            <div
+              role="tablist"
+              aria-label="추천 방식 선택"
+              className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800"
             >
-              단일 최적 카드
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "portfolio"}
-              onClick={() => setActiveTab("portfolio")}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "single"}
+                onClick={() => setActiveTab("single")}
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
+                  activeTab === "single"
+                    ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-white"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                단일 최적 카드
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "portfolio"}
+                onClick={() => setActiveTab("portfolio")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
+                  activeTab === "portfolio"
+                    ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-white"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <span>다중 카드 포트폴리오 (2~3장)</span>
+                {bestPortfolioIncrease > 0 && (
+                  <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.2 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">
+                    +{formatWon(bestPortfolioIncrease)}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {canShare && (
+            <RecommendationShareButton
+              onGenerateText={handleGenerateShareText}
+              title={
                 activeTab === "portfolio"
-                  ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-white"
-                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-              }`}
-            >
-              <span>다중 카드 포트폴리오 (2~3장)</span>
-              {bestPortfolioIncrease > 0 && (
-                <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.2 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">
-                  +{formatWon(bestPortfolioIncrease)}
-                </span>
-              )}
-            </button>
-          </div>
-        )}
+                  ? "AI 최적 카드 포트폴리오 추천 결과"
+                  : `${top?.card.name} 카드 혜택 추천 결과`
+              }
+              label="결과 복사"
+              testId="recommendation-header-share-btn"
+            />
+          )}
+        </div>
       </div>
 
       {activeTab === "single" ? (

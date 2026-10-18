@@ -3,6 +3,8 @@ import { formatWon } from "@/lib/format";
 import type { Category } from "@/types/card";
 import type { PortfolioResult, PortfolioRecommendation, PortfolioSize } from "@/types/portfolio";
 import { useToast } from "@/hooks/useToast";
+import { RecommendationShareButton } from "@/components/RecommendationShareButton";
+import { formatPortfolioRecommendationSummary } from "@/lib/recommendationShare";
 
 interface PortfolioRecommendationProps {
   portfolioResult: PortfolioResult;
@@ -98,45 +100,58 @@ export function PortfolioRecommendationView({
           </p>
         </div>
 
-        {/* 조합 크기 선택 탭 (2장 vs 3장) */}
-        <div
-          role="tablist"
-          aria-label="포트폴리오 조합 장수 선택"
-          className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800 self-start sm:self-auto"
-        >
-          {pair && (
-            <button
-              id="portfolio-tab-2"
-              type="button"
-              role="tab"
-              aria-controls="portfolio-tabpanel"
-              aria-selected={selectedSize === 2}
-              onClick={() => setSelectedSize(2)}
-              className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
-                selectedSize === 2
-                  ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-white"
-                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-              }`}
-            >
-              2장 조합
-            </button>
-          )}
-          {trio && (
-            <button
-              id="portfolio-tab-3"
-              type="button"
-              role="tab"
-              aria-controls="portfolio-tabpanel"
-              aria-selected={selectedSize === 3}
-              onClick={() => setSelectedSize(3)}
-              className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
-                selectedSize === 3
-                  ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-white"
-                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-              }`}
-            >
-              3장 조합
-            </button>
+        {/* 조합 크기 선택 탭 (2장 vs 3장) & 공유 버튼 */}
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <div
+            role="tablist"
+            aria-label="포트폴리오 조합 장수 선택"
+            className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800"
+          >
+            {pair && (
+              <button
+                id="portfolio-tab-2"
+                type="button"
+                role="tab"
+                aria-controls="portfolio-tabpanel"
+                aria-selected={selectedSize === 2}
+                onClick={() => setSelectedSize(2)}
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
+                  selectedSize === 2
+                    ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-white"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                2장 조합
+              </button>
+            )}
+            {trio && (
+              <button
+                id="portfolio-tab-3"
+                type="button"
+                role="tab"
+                aria-controls="portfolio-tabpanel"
+                aria-selected={selectedSize === 3}
+                onClick={() => setSelectedSize(3)}
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
+                  selectedSize === 3
+                    ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-white"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                3장 조합
+              </button>
+            )}
+          </div>
+
+          {activePortfolio && (
+            <RecommendationShareButton
+              onGenerateText={(opts) =>
+                formatPortfolioRecommendationSummary(activePortfolio, categories, opts)
+              }
+              title={`AI 최적 ${activePortfolio.combinationSize}장 카드 포트폴리오 추천 결과`}
+              label="조합 복사"
+              testId="portfolio-share-btn"
+            />
           )}
         </div>
       </div>
