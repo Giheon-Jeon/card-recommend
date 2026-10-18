@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, within } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { RecommendationResult } from "@/components/RecommendationResult";
 import type { Card, Category } from "@/types/card";
 import type { CardEvaluation, CategoryWinner } from "@/types/recommendation";
@@ -192,5 +192,85 @@ describe("RecommendationResult Component", () => {
     expect(portfolioTab).toHaveAttribute("aria-selected", "true");
     expect(singleTab).toHaveAttribute("aria-selected", "false");
     expect(screen.getByText("2장 조합")).toBeInTheDocument();
+  });
+
+  it("상단 결과 복사 버튼을 누르면 추천 요약이 클립보드에 복사되고 복사 완료 상태로 전환된다", async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: writeTextMock },
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(navigator, "share", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+
+    const mockRanked: CardEvaluation[] = [
+      {
+        card: mockCardA,
+        qualifyingSpend: 400000,
+        meetsMinimum: true,
+        tierIndex: 0,
+        breakdown: [
+          { category: "cafe", spend: 100000, benefitAmount: 10000, capped: true },
+        ],
+        totalMonthlyBenefit: 10000,
+        netMonthlyBenefit: 9000,
+      },
+    ];
+
+    render(
+      <RecommendationResult
+        ranked={mockRanked}
+        categoryWinners={[{ category: "cafe", bestCard: mockCardA, benefitAmount: 10000 }]}
+        categories={mockCategories}
+      />,
+    );
+
+    const shareBtn = screen.getByTestId("recommendation-header-share-btn");
+    expect(shareBtn).toBeInTheDocument();
+
+    fireEvent.click(shareBtn);
+
+    expect(writeTextMock).toHaveBeenCalledTimes(1);
+    const copiedText = writeTextMock.mock.calls[0][0];
+    expect(copiedText).toContain("신한 마이카페 카드");
+    expect(copiedText).toContain("9,000원");
+
+    // 복사 완료 피드백 텍스트 확인
+    expect(await screen.findByText("복사 완료!")).toBeInTheDocument();
+  });
+
+  it("공유 옵션 버튼을 클릭하면 세부 설정 메뉴가 열리고 개인정보 보호 옵션을 설정할 수 있다", () => {
+    const mockRanked: CardEvaluation[] = [
+      {
+        card: mockCardA,
+        qualifyingSpend: 400000,
+        meetsMinimum: true,
+        tierIndex: 0,
+        breakdown: [],
+        totalMonthlyBenefit: 10000,
+        netMonthlyBenefit: 9000,
+      },
+    ];
+
+    render(
+      <RecommendationResult
+        ranked={mockRanked}
+        categoryWinners={[]}
+        categories={mockCategories}
+      />,
+    );
+
+    const optionsBtn = screen.getByTestId("recommendation-header-share-btn-options");
+    expect(optionsBtn).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(optionsBtn);
+    expect(optionsBtn).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("dialog", { name: "공유 세부 옵션" })).toBeInTheDocument();
+    expect(screen.getByText("개인정보 보호 옵션")).toBeInTheDocument();
+    expect(screen.getByLabelText("카테고리별 세부 지출액 포함")).toBeInTheDocument();
   });
 });

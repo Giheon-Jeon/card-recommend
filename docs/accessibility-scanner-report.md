@@ -119,4 +119,14 @@ Oxlint JSX-A11y 및 Axe-core 점검을 통해 기존 주요 컴포넌트들의 �
 | **`MerchantRulesModal` (분류 규칙 사전 모달)** | HTML5 시맨틱 `<dialog>` 및 포커스 트랩 | - 시맨틱 `<dialog>` 태그, `aria-modal="true"`, `aria-labelledby="merchant-rules-title"`, `aria-describedby="merchant-rules-desc"` 준수<br>- `Escape` 키 입력 시 즉각 닫힘 및 모달 오픈 시 배경 스크롤 잠금(`overflow = "hidden"`), 닫힘 시 직전 트리거 요소로 포커스 복원<br>- 모달 내부 포커서블 요소 간 `Tab` / `Shift+Tab` 무한 순환 포커스 트랩 완벽 구현 |
 | **규칙 등록 및 인라인 수정 폼** | 명확한 폼 컨트롤 라벨링 (`aria-label`) | - 신규 등록 인풋, 카테고리 셀렉트, 검색창, 인라인 수정 인풋/셀렉트 및 파일 업로드 input에 `aria-label` 전면 부여<br>- 에러 메시지 발생 시 보조공학기기 인지가 가능하도록 명확한 에러 텍스트 피드백 제공<br>- `tests/a11y.test.tsx`에서 axe-core 기반 WCAG 2.1 Level A/AA 규격 위반 0건 무결점 통과 |
 
+---
+
+## 10. 86번 이슈: 카드 추천 결과 및 포트폴리오 요약 공유 기능 접근성 고도화 결과
+
+| 대상 컴포넌트 | 접근성 구현 및 강화 사항 | 세부 내용 |
+| :--- | :--- | :--- |
+| **`RecommendationShareButton` (공유 버튼)** | WAI-ARIA 상태 전달 및 시맨틱 팝오버 | - 버튼에 상세 `aria-label`을 부여하여 세부 지출 포함/요약 상태를 스크린리더에 명확히 전달<br>- 복사 완료 시 시각적 `Check` 아이콘과 함께 `<output aria-live="polite">` 라이브 리전을 통해 보조공학기기에 완료 상태를 즉각 음성 안내<br>- 옵션 드롭다운 토글 버튼에 `aria-expanded` 및 `aria-haspopup="true"` 적용<br>- 옵션 팝오버에 HTML5 시맨틱 `<dialog open>` 및 `aria-label="공유 세부 옵션"`을 적용하여 axe-core 검사 완전 통과 |
+| **`RecommendationResult` & `PortfolioRecommendation`** | 통합 결과 복사/공유 인터랙션 접근성 | - 단일 1위 카드 및 다중 포트폴리오 헤더에 적응형 공유 버튼을 배치하여 키보드 탐색(Tab) 접근성 극대화<br>- `tests/a11y.test.tsx`에서 axe-core 자동화 테스트를 통해 팝오버 열림/닫힘 전 상태에서 WCAG 2.1 Level A/AA 규격 위반 0건 확인 완료 |
+
+
 

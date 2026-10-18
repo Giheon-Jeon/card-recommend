@@ -212,4 +212,29 @@ describe("Accessibility (a11y) Automated Tests with axe-core", () => {
     const violations = await checkA11y(container);
     expect(violations).toEqual([]);
   });
+
+  it("RecommendationResult 및 RecommendationShareButton 컴포넌트는 WCAG 접근성 위반 사항이 없어야 한다", async () => {
+    const { RecommendationResult } = await import("@/components/RecommendationResult");
+    const { container } = render(
+      <RecommendationResult
+        ranked={[dummyEvaluation]}
+        categoryWinners={[
+          { category: "cafe", bestCard: dummyEvaluation.card, benefitAmount: 10000 },
+        ]}
+        categories={dummyCategories}
+      />
+    );
+    const violations = await checkA11y(container);
+    expect(violations).toEqual([]);
+
+    // 공유 옵션 드롭다운이 열린 상태에서도 접근성 위반 검사
+    const optionsBtn = container.querySelector(
+      '[data-testid="recommendation-header-share-btn-options"]'
+    );
+    if (optionsBtn) {
+      fireEvent.click(optionsBtn);
+      const openViolations = await checkA11y(container);
+      expect(openViolations).toEqual([]);
+    }
+  });
 });
