@@ -285,6 +285,40 @@ describe("PortfolioRecommendationView Component", () => {
     expect(tabpanel).toHaveAttribute("id", "portfolio-tabpanel");
     expect(tabpanel).toHaveAttribute("aria-labelledby", "portfolio-tab-2");
   });
+
+  it("포트폴리오 상단의 '조합 복사' 버튼을 클릭하면 포트폴리오 조합 요약이 클립보드에 복사된다", async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: writeTextMock },
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(navigator, "share", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+
+    render(
+      <PortfolioRecommendationView
+        portfolioResult={mockPortfolioResult}
+        categories={mockCategories}
+        myCardIds={[]}
+      />,
+    );
+
+    const shareBtn = screen.getByTestId("portfolio-share-btn");
+    expect(shareBtn).toBeInTheDocument();
+
+    fireEvent.click(shareBtn);
+
+    expect(writeTextMock).toHaveBeenCalledTimes(1);
+    const copiedText = writeTextMock.mock.calls[0][0];
+    expect(copiedText).toContain("🎯 [AI 최적 카드 포트폴리오 (2장 조합)]");
+    expect(copiedText).toContain("38,000원");
+    expect(copiedText).toContain("신한 마이카페 카드");
+    expect(copiedText).toContain("현대 모빌리티 카드");
+  });
 });
 
 
