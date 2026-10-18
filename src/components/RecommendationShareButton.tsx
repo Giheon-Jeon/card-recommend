@@ -3,6 +3,7 @@ import { Share2, Copy, Check, ChevronDown, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import {
   shareOrCopyRecommendation,
+  copyTextToClipboard,
   type ShareFormatOptions,
 } from "@/lib/recommendationShare";
 
@@ -71,7 +72,6 @@ export function RecommendationShareButton({
 
     if (forcedAction === "clipboard") {
       // 강제 클립보드 복사
-      const { copyTextToClipboard } = await import("@/lib/recommendationShare");
       const ok = await copyTextToClipboard(text);
       if (ok) {
         setCopied(true);
