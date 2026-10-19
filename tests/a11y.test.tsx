@@ -8,6 +8,7 @@ import { ParsedItemsTable } from "@/components/ParsedItemsTable";
 import { SpendingImporter } from "@/components/SpendingImporter";
 import { SpendingSimulator } from "@/components/SpendingSimulator";
 import { MerchantRulesModal } from "@/components/MerchantRulesModal";
+import { PerformanceProgressTracker } from "@/components/catalog/PerformanceProgressTracker";
 import type { CatalogCardEntry } from "@/types/catalog";
 
 // Axe 실행 헬퍼: 가상 DOM 환경(happy-dom)에서 지원되지 않는 색상 대비 등 제외한 표준 WCAG 검사
@@ -236,5 +237,17 @@ describe("Accessibility (a11y) Automated Tests with axe-core", () => {
       const openViolations = await checkA11y(container);
       expect(openViolations).toEqual([]);
     }
+  });
+
+  it("PerformanceProgressTracker 컴포넌트는 WCAG 접근성 위반 사항이 없어야 한다", async () => {
+    const { container } = render(
+      <PerformanceProgressTracker
+        currentSpend={350000}
+        tiers={[300000, 700000, 1000000]}
+        cardName="신한카드 Mr.Life"
+      />
+    );
+    const violations = await checkA11y(container);
+    expect(violations).toEqual([]);
   });
 });

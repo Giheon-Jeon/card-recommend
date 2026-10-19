@@ -230,4 +230,47 @@ describe("MyCardsPage Component", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(document.body.style.overflow).toBe("auto");
   });
+
+  it("전월 실적 트래커 컨트롤 바와 각 카드별 실적 진행바가 렌더링되어야 한다", () => {
+    render(
+      <ToastProvider>
+        <MyCardsPage myCards={mockMyCards} />
+      </ToastProvider>
+    );
+
+    expect(screen.getByTestId("performance-tracker-control-bar")).toBeInTheDocument();
+    expect(screen.getByLabelText("이번 달 월 지출액 입력")).toBeInTheDocument();
+    expect(screen.getByText("시뮬레이터 지출 가져오기")).toBeInTheDocument();
+
+    const progressbars = screen.getAllByRole("progressbar");
+    expect(progressbars.length).toBe(mockMyCards.ids.length);
+  });
+
+  it("월 지출액 입력값 변경 시 실적 달성 현황 및 진행바가 갱신되어야 한다", () => {
+    render(
+      <ToastProvider>
+        <MyCardsPage myCards={mockMyCards} />
+      </ToastProvider>
+    );
+
+    const spendInput = screen.getByLabelText("이번 달 월 지출액 입력");
+    fireEvent.change(spendInput, { target: { value: "1500000" } });
+
+    expect(screen.getByTestId("overview-met-count")).toHaveTextContent("총 2장 중 2장 달성");
+  });
+
+  it("시뮬레이터 지출 가져오기 버튼 클릭 시 알림 토스트가 표시되어야 한다", () => {
+    render(
+      <ToastProvider>
+        <MyCardsPage myCards={mockMyCards} />
+      </ToastProvider>
+    );
+
+    const loadBtn = screen.getByRole("button", { name: /시뮬레이터 지출 가져오기/ });
+    fireEvent.click(loadBtn);
+
+    const status = screen.getByRole("status");
+    expect(status).toBeInTheDocument();
+  });
 });
+
