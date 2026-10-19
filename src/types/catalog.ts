@@ -10,5 +10,6 @@ export interface CatalogEntry {
   annualFee?: number;
   imageUrl?: string;
   benefitSummary?: string;
+  performanceStandard?: string;
   fetchedAt: string;
 }
