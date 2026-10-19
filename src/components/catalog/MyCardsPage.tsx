@@ -1,9 +1,12 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import type { CatalogEntry } from "@/types/catalog";
 import { useMyCards, downloadMyCardsBackup, parseAndValidateMyCardsBackup } from "@/lib/myCards";
-import { catalogCards } from "@/lib/loadCatalog";
+import { catalogCards, categories } from "@/lib/loadCatalog";
 import { formatWon } from "@/lib/format";
 import { CardDetailModal } from "@/components/catalog/CardDetailModal";
+import { PerformanceProgressTracker } from "@/components/catalog/PerformanceProgressTracker";
+import { getCardPerformanceTiers, calculatePerformanceProgress } from "@/lib/performanceTracker";
+import { readStoredSpending } from "@/lib/spendingProfile";
 import { useToast } from "@/hooks/useToast";
 
 interface MyCardsPageProps {
@@ -37,6 +40,21 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
     };
   }, [isImportModalOpen]);
 
+  const [globalSpend, setGlobalSpend] = useState<number>(500000);
+  const [cardSpends, setCardSpends] = useState<Record<number, number>>({});
+  const [editingCardSpendId, setEditingCardSpendId] = useState<number | null>(null);
+
+  const handleLoadSimulatorSpend = () => {
+    const stored = readStoredSpending(categories);
+    const total = Object.values(stored).reduce((sum, val) => sum + val, 0);
+    if (total > 0) {
+      setGlobalSpend(total);
+      toast.success(`시뮬레이터 지출 총액 ${formatWon(total)}을 불러왔습니다.`);
+    } else {
+      toast.info("시뮬레이터에 등록된 지출 내역이 없습니다. (0원)");
+    }
+  };
+
   const entries = useMemo(() => {
     const idSet = new Set(myCards.ids);
     return catalogCards.filter((c) => idSet.has(c.sourceId));
@@ -44,6 +62,53 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
 
   const totalAnnualFee = entries.reduce((sum, c) => sum + (c.annualFee ?? 0), 0);
   const knownFeeCount = entries.filter((c) => c.annualFee !== undefined).length;
+
+  const cardPerformanceMap = useMemo(() => {
+    const map = new Map<
+      number,
+      {
+        tiers: number[];
+        spend: number;
+        progress: ReturnType<typeof calculatePerformanceProgress>;
+      }
+    >();
+
+    for (const entry of entries) {
+      const tiers = getCardPerformanceTiers(entry);
+      const spend = cardSpends[entry.sourceId] ?? globalSpend;
+      const progress = calculatePerformanceProgress(spend, tiers);
+      map.set(entry.sourceId, { tiers, spend, progress });
+    }
+    return map;
+  }, [entries, cardSpends, globalSpend]);
+
+  const performanceOverview = useMemo(() => {
+    let metCount = 0;
+    let maxCount = 0;
+    let unmetCount = 0;
+    let noneCount = 0;
+
+    for (const { progress } of cardPerformanceMap.values()) {
+      if (progress.status === "max") {
+        maxCount++;
+        metCount++;
+      } else if (progress.status === "met") {
+        metCount++;
+      } else if (progress.status === "unmet") {
+        unmetCount++;
+      } else {
+        noneCount++;
+      }
+    }
+
+    return {
+      total: entries.length,
+      metCount,
+      maxCount,
+      unmetCount,
+      noneCount,
+    };
+  }, [cardPerformanceMap, entries.length]);
 
   const issuerStats = useMemo(() => {
     const map = new Map<string, { count: number; totalFee: number }>();
@@ -194,6 +259,69 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
             </div>
           </div>
 
+          {/* 실적 달성 현황 및 지출액 설정 바 */}
+          <div
+            data-testid="performance-tracker-control-bar"
+            className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                  전월 실적 트래커
+                </span>
+                <span
+                  data-testid="overview-met-count"
+                  className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-950/80 px-2 py-0.5 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400"
+                >
+                  총 {entries.length}장 중 {performanceOverview.metCount}장 달성
+                </span>
+                {performanceOverview.maxCount > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/80 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    최고 혜택 {performanceOverview.maxCount}장
+                  </span>
+                )}
+                {performanceOverview.unmetCount > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/80 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                    미달성 {performanceOverview.unmetCount}장
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                월 지출액을 기준으로 보유 카드의 최소 실적 및 구간별 달성 현황을 실시간 추적합니다.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 text-xs">
+                <label htmlFor="global-monthly-spend" className="font-medium text-slate-500 dark:text-slate-400">
+                  월 지출액:
+                </label>
+                <input
+                  id="global-monthly-spend"
+                  type="number"
+                  step="10000"
+                  min="0"
+                  value={globalSpend}
+                  onChange={(e) => setGlobalSpend(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  className="w-24 bg-transparent font-bold text-slate-900 dark:text-slate-100 outline-none text-right"
+                  aria-label="이번 달 월 지출액 입력"
+                />
+                <span className="text-slate-400 dark:text-slate-500">원</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleLoadSimulatorSpend}
+                className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 shadow-xs transition hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                시뮬레이터 지출 가져오기
+              </button>
+            </div>
+          </div>
+
           {issuerStats.length > 0 && (
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
@@ -229,39 +357,98 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
           )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {entries.map((entry) => (
-              <div
-                key={entry.sourceId}
-                className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-md"
-              >
-                <button
-                  type="button"
-                  onClick={() => setSelected(entry)}
-                  className="flex flex-1 flex-col gap-2 text-left"
+            {entries.map((entry) => {
+              const perf = cardPerformanceMap.get(entry.sourceId);
+              const spend = perf?.spend ?? globalSpend;
+              const tiers = perf?.tiers ?? [];
+              const isEditing = editingCardSpendId === entry.sourceId;
+
+              return (
+                <div
+                  key={entry.sourceId}
+                  className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-md"
                 >
-                  <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400">{entry.issuer || "카드사 미상"}</p>
-                  <h3 className="text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">{entry.name}</h3>
-                  {entry.benefitSummary && (
-                    <p className="line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                      {entry.benefitSummary}
-                    </p>
-                  )}
-                  <div className="mt-auto flex items-center justify-between pt-1 text-sm">
-                    <span className="text-xs text-slate-400 dark:text-slate-500">연회비</span>
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {entry.annualFee !== undefined ? formatWon(entry.annualFee) : "정보 없음"}
-                    </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(entry)}
+                    className="flex flex-1 flex-col gap-2 text-left"
+                  >
+                    <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400">{entry.issuer || "카드사 미상"}</p>
+                    <h3 className="text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">{entry.name}</h3>
+                    {entry.benefitSummary && (
+                      <p className="line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                        {entry.benefitSummary}
+                      </p>
+                    )}
+                    <div className="mt-auto flex items-center justify-between pt-1 text-sm">
+                      <span className="text-xs text-slate-400 dark:text-slate-500">연회비</span>
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                        {entry.annualFee !== undefined ? formatWon(entry.annualFee) : "정보 없음"}
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 카드별 실적 트래커 및 개별 사용액 입력 위젯 */}
+                  <div className="flex flex-col gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500">실적 산정 사용액</span>
+                      {isEditing ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            step="10000"
+                            min="0"
+                            defaultValue={spend}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const val = Math.max(0, parseInt((e.target as HTMLInputElement).value, 10) || 0);
+                                setCardSpends((prev) => ({ ...prev, [entry.sourceId]: val }));
+                                setEditingCardSpendId(null);
+                              } else if (e.key === "Escape") {
+                                setEditingCardSpendId(null);
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                              setCardSpends((prev) => ({ ...prev, [entry.sourceId]: val }));
+                              setEditingCardSpendId(null);
+                            }}
+                            ref={(el) => el?.focus()}
+                            className="w-20 rounded border border-indigo-400 dark:border-indigo-600 px-1.5 py-0.5 text-right font-medium text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 text-[11px]"
+                            aria-label={`${entry.name} 월 사용액 수정`}
+                          />
+                          <span className="text-[11px] text-slate-500">원</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditingCardSpendId(entry.sourceId)}
+                          title="이 카드의 월 사용액 직접 수정"
+                          className="group flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+                        >
+                          <span>{formatWon(spend)}</span>
+                          <span className="text-[10px] text-slate-400 group-hover:text-indigo-500">✎</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <PerformanceProgressTracker
+                      currentSpend={spend}
+                      tiers={tiers}
+                      cardName={entry.name}
+                    />
                   </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => myCards.remove(entry.sourceId)}
-                  className="rounded-lg border border-slate-200 dark:border-slate-700 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 transition hover:border-rose-300 dark:hover:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400"
-                >
-                  내 카드에서 제거
-                </button>
-              </div>
-            ))}
+
+                  <button
+                    type="button"
+                    onClick={() => myCards.remove(entry.sourceId)}
+                    className="rounded-lg border border-slate-200 dark:border-slate-700 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 transition hover:border-rose-300 dark:hover:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400"
+                  >
+                    내 카드에서 제거
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
