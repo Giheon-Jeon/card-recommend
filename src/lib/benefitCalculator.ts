@@ -31,8 +31,62 @@ export function findApplicableTierIndex(card: Card, qualifyingSpend: number): nu
   return applicable;
 }
 
-/** 카드 한 장에 대해 주어진 지출 프로필 기준 혜택을 계산합니다. */
-export function evaluateCard(card: Card, spending: SpendingProfile): CardEvaluation {
+/**
+ * 지출 프로필 객체를 캐시 키 문자열로 정규화합니다.
+ */
+export function serializeSpendingProfile(spending: SpendingProfile): string {
+  const keys = Object.keys(spending).sort();
+  let key = "";
+  for (const k of keys) {
+    const val = spending[k as keyof SpendingProfile] ?? 0;
+    if (val > 0) {
+      key += `${k}:${val};`;
+    }
+  }
+  return key;
+}
+
+const BENEFIT_CACHE_MAX_SIZE = 2000;
+const benefitEvaluationCache = new Map<string, CardEvaluation>();
+let cacheHits = 0;
+let cacheMisses = 0;
+
+/** 혜택 계산 메모이제이션 캐시를 초기화합니다. */
+export function clearBenefitCache(): void {
+  benefitEvaluationCache.clear();
+  cacheHits = 0;
+  cacheMisses = 0;
+}
+
+/** 혜택 계산 캐시 통계를 반환합니다. */
+export function getBenefitCacheStats(): { size: number; hits: number; misses: number; maxSize: number } {
+  return {
+    size: benefitEvaluationCache.size,
+    hits: cacheHits,
+    misses: cacheMisses,
+    maxSize: BENEFIT_CACHE_MAX_SIZE,
+  };
+}
+
+/** 카드 한 장에 대해 주어진 지출 프로필 기준 혜택을 계산합니다 (LRU 캐시 적용). */
+export function evaluateCard(
+  card: Card,
+  spending: SpendingProfile,
+  useCache = true,
+): CardEvaluation {
+  const cardKey = card.id || `${card.name}_${card.annualFee ?? 0}`;
+  const cacheKey = `${cardKey}__${serializeSpendingProfile(spending)}`;
+
+  if (useCache && benefitEvaluationCache.has(cacheKey)) {
+    cacheHits++;
+    const cached = benefitEvaluationCache.get(cacheKey)!;
+    // LRU 최신화
+    benefitEvaluationCache.delete(cacheKey);
+    benefitEvaluationCache.set(cacheKey, cached);
+    return cached;
+  }
+
+  cacheMisses++;
   const qualifyingSpend = calculateQualifyingSpend(card, spending);
   const tierIndex = findApplicableTierIndex(card, qualifyingSpend);
 
@@ -60,7 +114,7 @@ export function evaluateCard(card: Card, spending: SpendingProfile): CardEvaluat
 
   const netMonthlyBenefit = totalMonthlyBenefit - (card.annualFee || 0) / 12;
 
-  return {
+  const result: CardEvaluation = {
     card,
     qualifyingSpend,
     meetsMinimum: tierIndex !== null,
@@ -69,6 +123,18 @@ export function evaluateCard(card: Card, spending: SpendingProfile): CardEvaluat
     totalMonthlyBenefit,
     netMonthlyBenefit,
   };
+
+  if (useCache) {
+    if (benefitEvaluationCache.size >= BENEFIT_CACHE_MAX_SIZE) {
+      const oldestKey = benefitEvaluationCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        benefitEvaluationCache.delete(oldestKey);
+      }
+    }
+    benefitEvaluationCache.set(cacheKey, result);
+  }
+
+  return result;
 }
 
 export interface BreakEvenAnalysis {
