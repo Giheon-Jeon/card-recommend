@@ -1,6 +1,8 @@
 import type { Card, CategoryId, SpendingProfile } from "@/types/card";
 import type { CardEvaluation, CategoryWinner } from "@/types/recommendation";
-import { evaluateCard } from "./benefitCalculator";
+import { evaluateCard, clearBenefitCache, getBenefitCacheStats } from "./benefitCalculator";
+
+export { clearBenefitCache, getBenefitCacheStats };
 
 /**
  * 보유 카드 전체를 지출 프로필 기준으로 평가하고, 순혜택(netMonthlyBenefit) 내림차순으로 정렬합니다.

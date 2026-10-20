@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import type { CatalogEntry } from "@/types/catalog";
-import { catalogCards, catalogIssuers, catalogTypes, isInfoInsufficient } from "@/lib/loadCatalog";
+import { catalogIssuers, catalogTypes } from "@/lib/loadCatalog";
+import { searchCatalogIndexed } from "@/lib/catalogIndex";
 import type { useMyCards } from "@/lib/myCards";
 import { CatalogCardTile } from "@/components/catalog/CatalogCardTile";
 import { CardDetailModal } from "@/components/catalog/CardDetailModal";
@@ -39,13 +40,11 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
   const debouncedQuery = useDebounce(query, 300);
 
   const filtered = useMemo(() => {
-    const q = debouncedQuery.trim().toLowerCase();
-    return catalogCards.filter((c) => {
-      if (issuer && c.issuer !== issuer) return false;
-      if (type && c.category !== type) return false;
-      if (hideInsufficient && isInfoInsufficient(c)) return false;
-      if (q && !c.name.toLowerCase().includes(q) && !c.issuer.toLowerCase().includes(q)) return false;
-      return true;
+    return searchCatalogIndexed({
+      query: debouncedQuery,
+      issuer: issuer || undefined,
+      type: type || undefined,
+      hideInsufficient,
     });
   }, [debouncedQuery, issuer, type, hideInsufficient]);
 

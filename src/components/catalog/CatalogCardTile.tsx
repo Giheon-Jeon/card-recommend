@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { CatalogEntry } from "@/types/catalog";
 import { formatWon } from "@/lib/format";
 
@@ -11,7 +11,7 @@ interface CatalogCardTileProps {
   onToggleCompare?: (entry: CatalogEntry) => void;
 }
 
-export function CatalogCardTile({
+export const CatalogCardTile = memo(function CatalogCardTile({
   entry,
   onSelect,
   inMyCards,
@@ -165,4 +165,4 @@ export function CatalogCardTile({
       </button>
     </div>
   );
-}
+});
