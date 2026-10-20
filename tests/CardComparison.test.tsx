@@ -270,8 +270,8 @@ describe("CardComparisonModal Component", () => {
     expect(screen.getByText("포인트 플래티넘")).toBeInTheDocument();
 
     // 연회비 정보 확인
-    expect(screen.getByText("15,000원")).toBeInTheDocument();
-    expect(screen.getByText("30,000원")).toBeInTheDocument();
+    expect(screen.getAllByText("15,000원").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("30,000원").length).toBeGreaterThan(0);
 
     // 내 카드 보관 상태 버튼 확인
     expect(screen.getByText("내 카드 담김 ✓")).toBeInTheDocument();
@@ -321,6 +321,28 @@ describe("CardComparisonModal Component", () => {
     // 최고 혜택 강조 배지 확인 (대중교통: mockCard1, 카페: mockCard2 등)
     const bestBadges = screen.getAllByText("★ 최고 혜택");
     expect(bestBadges.length).toBeGreaterThan(0);
+  });
+
+  it("연간 예상 순혜택 및 연회비 회수 시점(BEP) 비교 행과 우위 배지가 올바르게 렌더링되어야 한다", () => {
+    render(
+      <CardComparisonModal
+        isOpen={true}
+        cards={[mockCard1, mockCard2, mockCard3]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // 순혜택 및 손익분기점 행 헤더 확인
+    expect(screen.getByText("연간 예상 순혜택")).toBeInTheDocument();
+    expect(screen.getByText("연회비 회수 시점")).toBeInTheDocument();
+    expect(screen.getByText("손익분기점(BEP)")).toBeInTheDocument();
+
+    // 체크카드(mockCard3, 연회비 0원)의 즉시 혜택 배지 확인
+    expect(screen.getByText("연회비 없음 (즉시 혜택)")).toBeInTheDocument();
+
+    // 우위 배지 확인 (최고 순혜택, 최단 회수)
+    expect(screen.getByText("★ 최고 순혜택")).toBeInTheDocument();
+    expect(screen.getByText("★ 최단 회수")).toBeInTheDocument();
   });
 
   it("Escape 키 입력 시 onClose가 호출되어야 한다", () => {

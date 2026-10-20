@@ -137,6 +137,16 @@ Oxlint JSX-A11y 및 Axe-core 점검을 통해 기존 주요 컴포넌트들의 �
 | **`PerformanceProgressTracker` (실적 진행바)** | HTML5 시맨틱 `<progress>` 및 WAI-ARIA 규격 준수 | - 시맨틱 `<progress>` 태그와 함께 `aria-valuenow`, `aria-valuemin="0"`, `aria-valuemax="100"` 적용<br>- `aria-valuetext`에 현재 상태 및 달성률(예: '달성, 달성률 50%', '실적 조건 없음')을 텍스트로 명확히 제공하여 스크린리더가 게이지 상태를 온전히 파악 가능<br>- 상태별 색상 뱃지 및 안내 문구에 명도 대비를 고려한 다크모드 팔레트 적용<br>- `tests/PerformanceProgressTracker.test.tsx` 및 `tests/a11y.test.tsx`에서 axe-core WCAG 2.1 Level A/AA 규격 위반 0건 확인 완료 |
 | **`MyCardsPage` (실적 컨트롤 및 개별 수정 인풋)** | 폼 컨트롤 명확한 라벨링 및 키보드 조작 | - 전역 월 지출액 입력 필드에 `<label htmlFor="global-monthly-spend">` 및 `aria-label` 명시<br>- 카드별 사용액 인라인 수정 모드 진입 시 `aria-label` 부여 및 `Enter`/`Escape` 키보드 인터랙션 지원<br>- 포커스 시 `focus:ring-2 focus:ring-indigo-500` 포커스 링 표시로 키보드 사용자 이동 경로 명확화 |
 
+---
+
+## 12. 88번 이슈: 연회비 회수 분기점(BEP) 및 연간 순혜택 지표 접근성 고도화 결과
+
+| 대상 컴포넌트 | 접근성 구현 및 강화 사항 | 세부 내용 |
+| :--- | :--- | :--- |
+| **`CardDetailModal` (실질 가치 & 손익분기점 위젯)** | 시맨틱 `<section>` 및 직관적 스크린리더 안내 | - 단순 div 대신 시맨틱 `<section aria-label="연간 순혜택 및 연회비 회수 분기점 지표">`를 적용하여 랜드마크 구조화 및 oxlint A11y 완전 통과<br>- 연회비 0원 시 '연회비 없음 (즉시 혜택)', 1개월 미만 회수 시 '당월 회수' 등 시각적 뱃지와 텍스트 설명을 1:1로 일치시켜 보조공학기기 사용자 혼선 방지<br>- 명도 대비(Color Contrast) 기준을 충족하는 에메랄드/인디고 다크모드 뱃지 팔레트 적용 |
+| **`CardComparisonModal` (비교표 순혜택/BEP 행)** | WAI-ARIA 테이블 셀 라벨링 및 우위 시각화 | - 비교표 내 연간 예상 순혜택 및 연회비 회수 시점 행의 `<th>` 및 `<td>` 요소에 구체적인 `aria-label`을 명시하여 스크린리더 표 탐색성 확보<br>- '최고 순혜택', '최단 회수' 등 상대적 우위 뱃지에 직관적인 텍스트 라벨을 포함하여 색상에만 의존하지 않는 비시각 정보 전달 구현<br>- `tests/CardComparison.test.tsx` 및 `tests/a11y.test.tsx` 자동화 테스트를 통해 WCAG 2.1 Level A/AA 위반 0건 검증 완료 |
+
+
 
 
 

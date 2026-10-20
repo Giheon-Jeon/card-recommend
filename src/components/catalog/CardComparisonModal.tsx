@@ -4,6 +4,7 @@ import { formatWon } from "@/lib/format";
 import { categories } from "@/lib/loadCatalog";
 import { catalogEntryToCard } from "@/lib/cardConverter";
 import type { Benefit } from "@/types/card";
+import { analyzeBreakEven, estimateMonthlyBenefitFromCard } from "@/lib/benefitCalculator";
 
 interface CardComparisonModalProps {
   isOpen: boolean;
@@ -47,7 +48,7 @@ export function CardComparisonModal({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const prevActiveElementRef = useRef<HTMLElement | null>(null);
 
-  // 각 카드의 파싱된 혜택 매핑
+  // 각 카드의 파싱된 혜택 매핑 및 손익분기점(BEP) 분석
   const parsedCards = useMemo(() => {
     return cards.map((card) => {
       const parsed = catalogEntryToCard(card);
@@ -56,9 +57,25 @@ export function CardComparisonModal({
       for (const b of benefits) {
         benefitMap.set(b.category, b);
       }
-      return { card, parsed, benefitMap };
+      const monthlyBenefit = estimateMonthlyBenefitFromCard(parsed);
+      const bep = analyzeBreakEven(monthlyBenefit, card.annualFee || 0);
+      return { card, parsed, benefitMap, bep };
     });
   }, [cards]);
+
+  // 비교 카드들 중 최고 연간 순혜택 산출
+  const maxNetBenefit = useMemo(() => {
+    if (parsedCards.length === 0) return 0;
+    return Math.max(...parsedCards.map((p) => p.bep.annualNetBenefit));
+  }, [parsedCards]);
+
+  // 비교 카드들 중 최단 회수 기간(개월) 산출
+  const bestBreakEvenMonths = useMemo(() => {
+    const validMonths = parsedCards
+      .map((p) => p.bep.breakEvenMonths)
+      .filter((m): m is number => m !== null);
+    return validMonths.length > 0 ? Math.min(...validMonths) : null;
+  }, [parsedCards]);
 
   // 카테고리별 최고 혜택률 계산
   const getCategoryBestRate = (catId: string): number => {
@@ -269,6 +286,107 @@ export function CardComparisonModal({
                     </span>
                   </td>
                 ))}
+              </tr>
+
+              {/* 연간 실질 순혜택 (연 혜택 - 연회비) */}
+              <tr className="bg-indigo-50/40 dark:bg-indigo-950/20">
+                <th
+                  scope="row"
+                  aria-label="연간 예상 순혜택"
+                  className="py-3.5 pr-4 text-left font-semibold text-slate-700 dark:text-slate-300"
+                >
+                  연간 예상 순혜택
+                  <span className="block text-[10px] font-normal text-slate-400 dark:text-slate-500">연 혜택 - 연회비</span>
+                </th>
+                {parsedCards.map(({ card, bep }) => {
+                  const isBest = cards.length > 1 && bep.annualNetBenefit === maxNetBenefit && maxNetBenefit > 0;
+                  return (
+                    <td
+                      key={card.sourceId}
+                      aria-label={`${card.name} 연간 예상 순혜택 ${formatWon(bep.annualNetBenefit)}`}
+                      className="px-4 py-3.5 align-top"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`text-base font-extrabold ${
+                              bep.annualNetBenefit >= 0
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-rose-600 dark:text-rose-400"
+                            }`}
+                          >
+                            {formatWon(bep.annualNetBenefit)}
+                          </span>
+                          {isBest && (
+                            <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                              ★ 최고 순혜택
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                          {bep.annualFee > 0
+                            ? `연 ${formatWon(bep.annualBenefit)} - 연회비 ${formatWon(bep.annualFee)}`
+                            : "연회비 없음 (100% 순혜택)"}
+                        </span>
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+
+              {/* 연회비 손익분기점 (BEP) */}
+              <tr className="bg-indigo-50/40 dark:bg-indigo-950/20">
+                <th
+                  scope="row"
+                  aria-label="연회비 회수 시점 손익분기점"
+                  className="py-3.5 pr-4 text-left font-semibold text-slate-700 dark:text-slate-300"
+                >
+                  연회비 회수 시점
+                  <span className="block text-[10px] font-normal text-slate-400 dark:text-slate-500">손익분기점(BEP)</span>
+                </th>
+                {parsedCards.map(({ card, bep }) => {
+                  const isFastest =
+                    cards.length > 1 &&
+                    bestBreakEvenMonths !== null &&
+                    bep.breakEvenMonths === bestBreakEvenMonths;
+                  return (
+                    <td
+                      key={card.sourceId}
+                      aria-label={`${card.name} 연회비 회수 시점 ${bep.breakEvenText}`}
+                      className="px-4 py-3.5 align-top"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold ${
+                              bep.isImmediate
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300"
+                                : bep.breakEvenMonths !== null && bep.breakEvenMonths < 1
+                                ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300"
+                                : bep.isRecoverable
+                                ? "bg-sky-100 text-sky-700 dark:bg-sky-950/80 dark:text-sky-300"
+                                : "bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300"
+                            }`}
+                          >
+                            {bep.breakEvenText}
+                          </span>
+                          {isFastest && (
+                            <span className="inline-flex items-center rounded-full bg-indigo-100 dark:bg-indigo-950/80 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300">
+                              ★ 최단 회수
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                          {bep.isImmediate
+                            ? "첫 달부터 순수 혜택"
+                            : bep.isRecoverable
+                            ? "이후 순수익 발생"
+                            : "혜택이 연회비 미달"}
+                        </span>
+                      </div>
+                    </td>
+                  );
+                })}
               </tr>
 
               {/* 섹션 구분: 10개 소비 카테고리별 혜택 */}

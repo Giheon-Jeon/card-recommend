@@ -3,12 +3,14 @@ import type { CatalogEntry } from "@/types/catalog";
 import { formatWon } from "@/lib/format";
 import { catalogEntryToCard } from "@/lib/cardConverter";
 import { categories } from "@/lib/loadCatalog";
+import { analyzeBreakEven, estimateMonthlyBenefitFromCard } from "@/lib/benefitCalculator";
 
 interface CardDetailModalProps {
   entry: CatalogEntry | null;
   onClose: () => void;
   inMyCards?: boolean;
   onToggleMyCards?: (entry: CatalogEntry) => void;
+  monthlyBenefit?: number;
 }
 
 export function CardDetailModal({
@@ -16,6 +18,7 @@ export function CardDetailModal({
   onClose,
   inMyCards = false,
   onToggleMyCards = () => {},
+  monthlyBenefit,
 }: CardDetailModalProps) {
   const [prevEntry, setPrevEntry] = useState(entry);
   const [imgError, setImgError] = useState(false);
@@ -29,6 +32,12 @@ export function CardDetailModal({
 
   const parsedCard = entry ? catalogEntryToCard(entry) : null;
   const benefits = parsedCard?.tiers[0]?.benefits ?? [];
+
+  const effectiveMonthlyBenefit =
+    monthlyBenefit ?? (parsedCard ? estimateMonthlyBenefitFromCard(parsedCard) : 0);
+  const bepAnalysis = entry
+    ? analyzeBreakEven(effectiveMonthlyBenefit, entry.annualFee || 0)
+    : null;
 
   const getCategoryLabel = (catId: string) => {
     return categories.find((c) => c.id === catId)?.label || catId;
@@ -186,6 +195,71 @@ export function CardDetailModal({
               </div>
             )}
           </div>
+
+          {bepAnalysis && (
+            <section
+              aria-label="연간 순혜택 및 연회비 회수 분기점 지표"
+              className="flex flex-col gap-2.5 rounded-xl border border-indigo-100 dark:border-indigo-900/50 bg-gradient-to-br from-indigo-50/70 via-white to-slate-50 dark:from-slate-800/90 dark:via-slate-800/60 dark:to-slate-900 p-3.5"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                  <span className="inline-block h-2 w-2 rounded-full bg-indigo-500"></span>
+                  실질 가치 & 손익분기점 분석
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  월 예상 혜택: {formatWon(bepAnalysis.monthlyBenefit)} 기준
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* 1. 연간 순혜택 */}
+                <div className="flex flex-col rounded-lg bg-white/90 dark:bg-slate-900/80 p-2.5 shadow-xs border border-slate-100 dark:border-slate-800">
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">연간 예상 순혜택</span>
+                  <span
+                    className={`mt-1 text-base font-extrabold ${
+                      bepAnalysis.annualNetBenefit >= 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-rose-600 dark:text-rose-400"
+                    }`}
+                  >
+                    {formatWon(bepAnalysis.annualNetBenefit)}
+                  </span>
+                  <span className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">
+                    {bepAnalysis.annualFee > 0
+                      ? `연 혜택 ${formatWon(bepAnalysis.annualBenefit)} - 연회비 ${formatWon(bepAnalysis.annualFee)}`
+                      : "연회비 없음 (100% 순혜택)"}
+                  </span>
+                </div>
+
+                {/* 2. 연회비 회수 시점 */}
+                <div className="flex flex-col rounded-lg bg-white/90 dark:bg-slate-900/80 p-2.5 shadow-xs border border-slate-100 dark:border-slate-800">
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">연회비 회수 시점</span>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span
+                      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold ${
+                        bepAnalysis.isImmediate
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300"
+                          : bepAnalysis.breakEvenMonths !== null && bepAnalysis.breakEvenMonths < 1
+                          ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300"
+                          : bepAnalysis.isRecoverable
+                          ? "bg-sky-100 text-sky-700 dark:bg-sky-950/80 dark:text-sky-300"
+                          : "bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300"
+                      }`}
+                    >
+                      {bepAnalysis.breakEvenText}
+                    </span>
+                  </div>
+                  <span className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">
+                    {bepAnalysis.isImmediate
+                      ? "첫 달부터 순수 혜택"
+                      : bepAnalysis.isRecoverable
+                      ? "이후 연간 순수익 구간"
+                      : "혜택이 연회비에 미달"}
+                  </span>
+                </div>
+              </div>
+            </section>
+          )}
 
           {entry.benefitSummary && (
             <div>
