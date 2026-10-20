@@ -70,3 +70,110 @@ export function evaluateCard(card: Card, spending: SpendingProfile): CardEvaluat
     netMonthlyBenefit,
   };
 }
+
+export interface BreakEvenAnalysis {
+  annualFee: number;
+  monthlyBenefit: number;
+  annualBenefit: number;
+  annualNetBenefit: number;
+  breakEvenMonths: number | null;
+  breakEvenText: string;
+  isImmediate: boolean;
+  isRecoverable: boolean;
+}
+
+/**
+ * 연간 순혜택을 계산합니다.
+ * 공식: (월간 예상 혜택 * 12) - 국내외 기본 연회비
+ */
+export function calculateAnnualNetBenefit(monthlyBenefit: number, annualFee: number = 0): number {
+  const safeMonthly = Math.max(0, monthlyBenefit || 0);
+  const safeAnnualFee = Math.max(0, annualFee || 0);
+  return Math.round(safeMonthly * 12 - safeAnnualFee);
+}
+
+/**
+ * 연회비 손익분기점(BEP) 소요 기간(개월 수)을 계산합니다.
+ * 공식: 연회비 / 월간 예상 혜택
+ * - 연회비가 0 이하: 0 (즉시 혜택)
+ * - 월간 예상 혜택이 0 이하: null (회수 불가)
+ */
+export function calculateBreakEvenMonths(monthlyBenefit: number, annualFee: number = 0): number | null {
+  const safeAnnualFee = Math.max(0, annualFee || 0);
+  const safeMonthly = Math.max(0, monthlyBenefit || 0);
+
+  if (safeAnnualFee <= 0) return 0;
+  if (safeMonthly <= 0) return null;
+
+  return safeAnnualFee / safeMonthly;
+}
+
+/**
+ * 손익분기점 소요 기간 텍스트를 포맷팅합니다.
+ * - 연회비 0원: "연회비 없음 (즉시 혜택)"
+ * - 회수 불가: "회수 불가 (월 혜택 없음)"
+ * - 1개월 미만: "당월 회수"
+ * - 1개월 이상: "약 X개월" (소수점 1자리 표기)
+ */
+export function formatBreakEvenPeriod(breakEvenMonths: number | null, annualFee: number = 0): string {
+  const safeAnnualFee = Math.max(0, annualFee || 0);
+  if (safeAnnualFee <= 0) {
+    return "연회비 없음 (즉시 혜택)";
+  }
+  if (breakEvenMonths === null || breakEvenMonths <= 0 || !Number.isFinite(breakEvenMonths)) {
+    return "회수 불가 (월 혜택 없음)";
+  }
+  if (breakEvenMonths < 1) {
+    return "당월 회수";
+  }
+  const formatted = Number.isInteger(breakEvenMonths)
+    ? `${breakEvenMonths}개월`
+    : `${breakEvenMonths.toFixed(1)}개월`;
+  return `약 ${formatted}`;
+}
+
+/**
+ * 월간 예상 혜택과 연회비를 바탕으로 종합 손익분기점(BEP) 및 연간 순혜택 지표를 산출합니다.
+ */
+export function analyzeBreakEven(monthlyBenefit: number, annualFee: number = 0): BreakEvenAnalysis {
+  const safeAnnualFee = Math.max(0, annualFee || 0);
+  const safeMonthly = Math.max(0, monthlyBenefit || 0);
+  const annualBenefit = safeMonthly * 12;
+  const annualNetBenefit = calculateAnnualNetBenefit(safeMonthly, safeAnnualFee);
+  const breakEvenMonths = calculateBreakEvenMonths(safeMonthly, safeAnnualFee);
+  const breakEvenText = formatBreakEvenPeriod(breakEvenMonths, safeAnnualFee);
+
+  return {
+    annualFee: safeAnnualFee,
+    monthlyBenefit: safeMonthly,
+    annualBenefit,
+    annualNetBenefit,
+    breakEvenMonths,
+    breakEvenText,
+    isImmediate: safeAnnualFee === 0,
+    isRecoverable: safeAnnualFee === 0 || (breakEvenMonths !== null && safeMonthly > 0),
+  };
+}
+
+/**
+ * 카드의 기본 혜택(tiers[0])을 바탕으로 기준 지출(예: 신용 50만원, 체크 30만원)에서의 예상 월 혜택액을 추정합니다.
+ * 지출 프로필이 별도로 주어지지 않았을 때 카탈로그 상세/비교에서 대표 지표로 활용됩니다.
+ */
+export function estimateMonthlyBenefitFromCard(card: Card, benchmarkMonthlySpend?: number): number {
+  if (!card.tiers || card.tiers.length === 0) return 0;
+  const tier = card.tiers[0];
+  if (!tier || !tier.benefits || tier.benefits.length === 0) return 0;
+
+  const defaultSpend = benchmarkMonthlySpend ?? (card.cardType === "check" ? 300000 : 500000);
+  const categoryCount = Math.max(1, tier.benefits.length);
+  const spendPerBenefit = Math.max(0, defaultSpend / categoryCount);
+
+  let totalBenefit = 0;
+  for (const b of tier.benefits) {
+    const rawBenefit = spendPerBenefit * b.rate;
+    const cappedBenefit = b.capPerMonth !== undefined ? Math.min(rawBenefit, b.capPerMonth) : rawBenefit;
+    totalBenefit += cappedBenefit;
+  }
+
+  return Math.round(totalBenefit);
+}
