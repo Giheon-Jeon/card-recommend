@@ -273,4 +273,58 @@ describe("RecommendationResult Component", () => {
     expect(screen.getByText("개인정보 보호 옵션")).toBeInTheDocument();
     expect(screen.getByLabelText("카테고리별 세부 지출액 포함")).toBeInTheDocument();
   });
+
+  it("피킹률 뱃지가 표시되고, 소득공제 토글 활성화 시 절세액과 연봉 설정이 렌더링된다", () => {
+    const mockRanked: CardEvaluation[] = [
+      {
+        card: mockCardB, // 체크카드
+        qualifyingSpend: 500000,
+        meetsMinimum: true,
+        tierIndex: 0,
+        breakdown: [
+          { category: "transport", spend: 200000, benefitAmount: 8000, capped: true },
+        ],
+        totalMonthlyBenefit: 8000,
+        netMonthlyBenefit: 8000,
+      },
+    ];
+
+    render(
+      <RecommendationResult
+        ranked={mockRanked}
+        categoryWinners={[]}
+        categories={mockCategories}
+        monthlySpend={1500000}
+      />,
+    );
+
+    // 피킹률 뱃지 확인
+    const pickingBadge = screen.getByTestId("picking-rate-badge");
+    expect(pickingBadge).toBeInTheDocument();
+    expect(pickingBadge).toHaveTextContent(/피킹률/);
+
+    // 초기 상태에서는 소득공제 토글 OFF
+    const toggle = screen.getByTestId("toggle-tax-savings");
+    expect(toggle).not.toBeChecked();
+    expect(screen.queryByTestId("tax-savings-cell")).not.toBeInTheDocument();
+
+    // 토글 ON
+    fireEvent.click(toggle);
+    expect(toggle).toBeChecked();
+
+    // 절세액 셀 및 체크카드 우대 공제 뱃지 렌더링 확인
+    expect(screen.getByTestId("tax-savings-cell")).toBeInTheDocument();
+    expect(screen.getByText("월 실질 순혜택 (절세 포함)")).toBeInTheDocument();
+    expect(screen.getByText("체크 30% 우대 공제")).toBeInTheDocument();
+
+    // 연봉 설정 버튼 확인 및 클릭
+    const salaryBtn = screen.getByTestId("salary-setting-btn");
+    expect(salaryBtn).toHaveTextContent("5,000만원");
+    fireEvent.click(salaryBtn);
+
+    // 연봉 팝오버 렌더링 및 7,000만원 선택
+    expect(screen.getByRole("dialog", { name: "총급여 설정" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "7,000만원" }));
+    expect(salaryBtn).toHaveTextContent("7,000만원");
+  });
 });

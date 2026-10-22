@@ -156,6 +156,7 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
             portfolioResult={portfolioResult}
             myCardIds={myCards.ids}
             onAddCards={handleAddPortfolioCards}
+            monthlySpend={Object.values(spending).reduce((sum, v) => sum + (v || 0), 0)}
           />
           <CardList
             evaluations={rankedForDisplay}
