@@ -9,6 +9,7 @@ import {
   formatSingleRecommendationSummary,
   formatPortfolioRecommendationSummary,
 } from "@/lib/recommendationShare";
+import { evaluateCardWithTaxSavings } from "@/lib/taxDeductionCalculator";
 
 interface RecommendationResultProps {
   ranked: CardEvaluation[];
@@ -17,6 +18,7 @@ interface RecommendationResultProps {
   portfolioResult?: PortfolioResult;
   myCardIds?: number[];
   onAddCards?: (sourceIds: number[]) => void;
+  monthlySpend?: number;
 }
 
 export function RecommendationResult({
@@ -26,8 +28,12 @@ export function RecommendationResult({
   portfolioResult,
   myCardIds,
   onAddCards,
+  monthlySpend,
 }: RecommendationResultProps) {
   const [activeTab, setActiveTab] = useState<"single" | "portfolio">("single");
+  const [includeTaxSavings, setIncludeTaxSavings] = useState(false);
+  const [annualSalary, setAnnualSalary] = useState(50000000);
+  const [showSalaryPopover, setShowSalaryPopover] = useState(false);
 
   const eligible = ranked.filter((r) => r.meetsMinimum);
   const top = eligible[0] ?? null;
@@ -39,6 +45,14 @@ export function RecommendationResult({
     portfolioResult?.pair?.benefitIncreaseVsSingle ?? 0,
     portfolioResult?.trio?.benefitIncreaseVsSingle ?? 0,
   );
+
+  // 실질 지출액 (전달받은 월 총지출액 또는 top 카드의 실적 인정 금액)
+  const actualMonthlySpend = monthlySpend ?? top?.qualifyingSpend ?? 0;
+
+  // 소득공제 및 피킹률 계산
+  const topTaxEvaluation = top
+    ? evaluateCardWithTaxSavings(top.card, actualMonthlySpend, top.netMonthlyBenefit, annualSalary)
+    : null;
 
   // 현재 활성화된 추천 결과에 맞춘 텍스트 생성기
   const handleGenerateShareText = (options: { includeSpendDetails?: boolean }) => {
@@ -124,6 +138,94 @@ export function RecommendationResult({
         </div>
       </div>
 
+      {/* 소득공제 절세 옵션 컨트롤 바 */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-slate-50 px-4 py-2.5 dark:bg-slate-800/60 text-xs">
+        <div className="flex items-center gap-2">
+          <label className="relative inline-flex cursor-pointer items-center">
+            <input
+              type="checkbox"
+              role="switch"
+              aria-checked={includeTaxSavings}
+              aria-label="연말정산 소득공제 절세 혜택 반영 토글"
+              data-testid="toggle-tax-savings"
+              checked={includeTaxSavings}
+              onChange={(e) => setIncludeTaxSavings(e.target.checked)}
+              className="peer sr-only"
+            />
+            <div className="peer h-5 w-9 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-focus:outline-none dark:bg-slate-700" />
+          </label>
+          <span className="font-semibold text-slate-700 dark:text-slate-300">
+            연말정산 소득공제 절세 혜택 합산 반영
+          </span>
+          <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300">
+            신용 15% · 체크 30%
+          </span>
+        </div>
+
+        {includeTaxSavings && (
+          <div className="relative flex items-center gap-1.5">
+            <span className="text-slate-500 dark:text-slate-400">기준 연봉:</span>
+            <button
+              type="button"
+              data-testid="salary-setting-btn"
+              onClick={() => setShowSalaryPopover(!showSalaryPopover)}
+              aria-expanded={showSalaryPopover}
+              aria-label="연봉 설정 변경"
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-bold text-slate-800 shadow-xs hover:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 transition"
+            >
+              {Math.round(annualSalary / 10000).toLocaleString()}만원 ✎
+            </button>
+
+            {showSalaryPopover && (
+              <dialog
+                open
+                aria-label="총급여 설정"
+                className="absolute right-0 top-full z-20 mt-1.5 w-60 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-800 text-xs block text-slate-800 dark:text-slate-100"
+              >
+                <p className="font-bold text-slate-800 dark:text-slate-200 mb-2">연간 총급여액 선택</p>
+                <div className="grid grid-cols-2 gap-1.5 mb-2.5">
+                  {[30000000, 50000000, 70000000, 100000000].map((sal) => (
+                    <button
+                      key={sal}
+                      type="button"
+                      onClick={() => {
+                        setAnnualSalary(sal);
+                        setShowSalaryPopover(false);
+                      }}
+                      className={`rounded-md px-2 py-1 text-center font-medium transition ${
+                        annualSalary === sal
+                          ? "bg-indigo-600 text-white font-bold"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200"
+                      }`}
+                    >
+                      {Math.round(sal / 10000).toLocaleString()}만원
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    step="5000000"
+                    min="10000000"
+                    value={annualSalary}
+                    onChange={(e) => setAnnualSalary(Math.max(0, Number(e.target.value)))}
+                    aria-label="연봉 직접 입력"
+                    className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSalaryPopover(false)}
+                    className="shrink-0 rounded-md bg-slate-900 px-2.5 py-1 text-white dark:bg-slate-100 dark:text-slate-900 font-bold"
+                  >
+                    확인
+                  </button>
+                </div>
+              </dialog>
+            )}
+          </div>
+        )}
+      </div>
+
       {activeTab === "single" ? (
         <>
           {top ? (
@@ -131,11 +233,26 @@ export function RecommendationResult({
               data-testid="top-card-banner"
               className="mb-6 flex flex-col gap-3 rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 p-6 text-white shadow-lg shadow-indigo-500/10"
             >
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-sm px-2.5 py-0.5 text-xs font-semibold tracking-wide text-indigo-50">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-300" />
-                  최적의 카드 1장
-                </span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-sm px-2.5 py-0.5 text-xs font-semibold tracking-wide text-indigo-50">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-300" />
+                    최적의 카드 1장
+                  </span>
+                  {topTaxEvaluation && (
+                    <span
+                      data-testid="picking-rate-badge"
+                      className="inline-flex items-center gap-1 rounded-full bg-amber-400/25 border border-amber-300/40 px-2.5 py-0.5 text-xs font-bold text-amber-200"
+                    >
+                      피킹률 {topTaxEvaluation.pickingRate.pickingRate}% ({topTaxEvaluation.pickingRate.tierLabel})
+                    </span>
+                  )}
+                  {top.card.cardType === "check" && includeTaxSavings && (
+                    <span className="rounded-full bg-emerald-400/25 border border-emerald-300/40 px-2 py-0.5 text-[11px] font-bold text-emerald-200">
+                      체크 30% 우대 공제
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs text-indigo-100">
                   {top.card.issuer} · {top.card.cardType === "credit" ? "신용카드" : "체크카드"}
                 </span>
@@ -150,11 +267,19 @@ export function RecommendationResult({
                 </p>
               </div>
 
-              <div className="mt-1 grid grid-cols-2 sm:grid-cols-3 gap-2.5 rounded-xl bg-white/10 p-3.5 backdrop-blur-sm">
+              <div className={`mt-1 grid gap-2.5 rounded-xl bg-white/10 p-3.5 backdrop-blur-sm ${
+                includeTaxSavings ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3"
+              }`}>
                 <div>
-                  <p className="text-[11px] text-indigo-200">월 순혜택 (연회비 차감)</p>
+                  <p className="text-[11px] text-indigo-200">
+                    {includeTaxSavings ? "월 실질 순혜택 (절세 포함)" : "월 순혜택 (연회비 차감)"}
+                  </p>
                   <p className="text-lg font-extrabold text-white">
-                    {formatWon(top.netMonthlyBenefit)}
+                    {formatWon(
+                      includeTaxSavings && topTaxEvaluation
+                        ? topTaxEvaluation.combinedMonthlyNetBenefit
+                        : top.netMonthlyBenefit,
+                    )}
                   </p>
                 </div>
                 <div>
@@ -163,12 +288,20 @@ export function RecommendationResult({
                     +{formatWon(top.totalMonthlyBenefit)}
                   </p>
                 </div>
-                <div className="col-span-2 sm:col-span-1">
+                <div>
                   <p className="text-[11px] text-indigo-200">월 환산 연회비</p>
                   <p className="text-base font-bold text-indigo-100">
                     -{formatWon(Math.round(top.card.annualFee / 12))}
                   </p>
                 </div>
+                {includeTaxSavings && topTaxEvaluation && (
+                  <div data-testid="tax-savings-cell">
+                    <p className="text-[11px] text-indigo-200">월 환산 절세액</p>
+                    <p className="text-base font-bold text-emerald-300">
+                      +{formatWon(topTaxEvaluation.taxResult.monthlyTaxSavings)}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ) : (

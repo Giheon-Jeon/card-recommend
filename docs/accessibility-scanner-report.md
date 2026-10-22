@@ -146,6 +146,16 @@ Oxlint JSX-A11y 및 Axe-core 점검을 통해 기존 주요 컴포넌트들의 �
 | **`CardDetailModal` (실질 가치 & 손익분기점 위젯)** | 시맨틱 `<section>` 및 직관적 스크린리더 안내 | - 단순 div 대신 시맨틱 `<section aria-label="연간 순혜택 및 연회비 회수 분기점 지표">`를 적용하여 랜드마크 구조화 및 oxlint A11y 완전 통과<br>- 연회비 0원 시 '연회비 없음 (즉시 혜택)', 1개월 미만 회수 시 '당월 회수' 등 시각적 뱃지와 텍스트 설명을 1:1로 일치시켜 보조공학기기 사용자 혼선 방지<br>- 명도 대비(Color Contrast) 기준을 충족하는 에메랄드/인디고 다크모드 뱃지 팔레트 적용 |
 | **`CardComparisonModal` (비교표 순혜택/BEP 행)** | WAI-ARIA 테이블 셀 라벨링 및 우위 시각화 | - 비교표 내 연간 예상 순혜택 및 연회비 회수 시점 행의 `<th>` 및 `<td>` 요소에 구체적인 `aria-label`을 명시하여 스크린리더 표 탐색성 확보<br>- '최고 순혜택', '최단 회수' 등 상대적 우위 뱃지에 직관적인 텍스트 라벨을 포함하여 색상에만 의존하지 않는 비시각 정보 전달 구현<br>- `tests/CardComparison.test.tsx` 및 `tests/a11y.test.tsx` 자동화 테스트를 통해 WCAG 2.1 Level A/AA 위반 0건 검증 완료 |
 
+---
+
+## 13. 96번 이슈: 연말정산 소득공제 및 피킹률(Picking Rate) 분석 지표 접근성 고도화 결과
+
+| 대상 컴포넌트 | 접근성 구현 및 강화 사항 | 세부 내용 |
+| :--- | :--- | :--- |
+| **`RecommendationResult` (소득공제 절세 토글 및 연봉 설정)** | WAI-ARIA 스위치 및 시맨틱 다이얼로그 준수 | - 절세 혜택 토글에 `role="switch"`와 `aria-checked`, `aria-label="연말정산 소득공제 절세 혜택 반영 토글"`을 부여하여 스크린리더에 스위치 상태 명확히 전달<br>- 기준 연봉 설정 팝오버에 HTML5 시맨틱 `<dialog open>` 및 `aria-label="총급여 설정"`을 적용하여 oxlint jsx-a11y `prefer-tag-over-role` 규칙 완벽 준수<br>- 연봉 변경 폼 인풋 및 버튼에 직관적인 `aria-label`을 부여하여 키보드(`Tab`, `Enter`) 접근성 완비 |
+| **`top-card-banner` (피킹률 뱃지 및 절세액 셀)** | 직관적인 상태 라벨링 및 고대비 색상 체계 | - 피킹률 수치뿐만 아니라 등급 라벨('최고 혜택', '우수', '무난', '낮음')을 텍스트로 명시하여 색상에만 의존하지 않는 비시각 정보 전달 구현<br>- 체크카드 30% 우대 공제 뱃지 및 월 환산 절세액 지표 셀에 명도 대비 기준(4.5:1 이상)을 충족하는 인디고/에메랄드 다크모드 팔레트 적용<br>- `tests/a11y.test.tsx` 및 `tests/RecommendationResult.test.tsx`를 통해 axe-core WCAG 2.1 Level A/AA 무결점 통과 검증 |
+
+
 
 
 
