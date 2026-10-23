@@ -4,6 +4,7 @@ import { formatWon } from "@/lib/format";
 import { getSliderMax } from "@/lib/spendingProfile";
 import type { SpendingPreset } from "@/lib/spendingPresets";
 import { SpendingPresetSelector } from "@/components/SpendingPresetSelector";
+import { getCategoryExclusionNotice } from "@/lib/cardExclusionParser";
 
 interface SpendingSimulatorProps {
   categories: Category[];
@@ -75,6 +76,7 @@ export function SpendingSimulator({
         {categories.map((category) => {
           const value = spending[category.id] ?? 0;
           const sliderMax = getSliderMax(value);
+          const exclusionNotice = getCategoryExclusionNotice(category.id);
 
           return (
             <div
@@ -82,9 +84,20 @@ export function SpendingSimulator({
               className="group rounded-xl border border-slate-200 p-3 transition hover:border-indigo-200 hover:bg-indigo-50/30 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-slate-700 dark:hover:bg-slate-800/70"
             >
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                  {category.label}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {category.label}
+                  </span>
+                  {exclusionNotice && (
+                    <span
+                      data-testid="category-exclusion-badge"
+                      title={exclusionNotice}
+                      className="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.2 text-[10px] font-bold text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 cursor-help"
+                    >
+                      실적주의
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs font-semibold text-slate-400 dark:text-slate-400">
                   {formatWon(value)}
                 </span>
@@ -130,6 +143,14 @@ export function SpendingSimulator({
                   </button>
                 ))}
               </div>
+              {exclusionNotice && value > 0 && (
+                <p
+                  data-testid="category-exclusion-tooltip"
+                  className="mt-2 rounded-md bg-amber-50/90 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-900/40 px-2 py-1 text-[10px] leading-tight text-amber-800 dark:text-amber-300"
+                >
+                  ⚠️ {exclusionNotice}
+                </p>
+              )}
             </div>
           );
         })}
