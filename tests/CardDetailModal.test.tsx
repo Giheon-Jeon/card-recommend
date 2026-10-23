@@ -71,4 +71,39 @@ describe("CardDetailModal Component", () => {
     expect(screen.getByText("345,000원")).toBeInTheDocument();
     expect(screen.getByText(/월 예상 혜택: 30,000원 기준/)).toBeInTheDocument();
   });
+
+  it("카드 상세 모달 내에 실적 및 혜택 제외 주의 항목 섹션과 뱃지들이 올바르게 렌더링되어야 한다", () => {
+    render(
+      <CardDetailModal
+        entry={sampleCreditCard}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("region", { name: "실적 및 혜택 제외 항목 안내" })).toBeInTheDocument();
+    expect(screen.getByText("실적 산정 및 혜택 제외 주의 항목")).toBeInTheDocument();
+    // 공과금 키워드로 감지된 세금·공과금 뱃지
+    expect(screen.getByTestId("exclusion-badge-tax")).toBeInTheDocument();
+    // 기본 표준 제외 항목인 아파트관리비 및 상품권 뱃지
+    expect(screen.getByTestId("exclusion-badge-apartment")).toBeInTheDocument();
+    expect(screen.getByTestId("exclusion-badge-voucher")).toBeInTheDocument();
+  });
+
+  it("상품권, 관리비 등 제외 키워드가 명시된 카드는 '카드 상품 명시 조건'으로 표기되어야 한다", () => {
+    const cardWithExclusions: CatalogEntry = {
+      ...sampleCheckCard,
+      benefitSummary: "편의점 10% 할인 (상품권, 아파트관리비 제외)",
+    };
+
+    render(
+      <CardDetailModal
+        entry={cardWithExclusions}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("카드 상품 명시 조건")).toBeInTheDocument();
+    expect(screen.getByTestId("exclusion-badge-voucher")).toBeInTheDocument();
+    expect(screen.getByTestId("exclusion-badge-apartment")).toBeInTheDocument();
+  });
 });

@@ -4,6 +4,7 @@ import { formatWon } from "@/lib/format";
 import { catalogEntryToCard } from "@/lib/cardConverter";
 import { categories } from "@/lib/loadCatalog";
 import { analyzeBreakEven, estimateMonthlyBenefitFromCard } from "@/lib/benefitCalculator";
+import { getExclusionsForCatalogEntry } from "@/lib/cardExclusionParser";
 
 interface CardDetailModalProps {
   entry: CatalogEntry | null;
@@ -32,6 +33,7 @@ export function CardDetailModal({
 
   const parsedCard = entry ? catalogEntryToCard(entry) : null;
   const benefits = parsedCard?.tiers[0]?.benefits ?? [];
+  const exclusionResult = entry ? getExclusionsForCatalogEntry(entry) : null;
 
   const effectiveMonthlyBenefit =
     monthlyBenefit ?? (parsedCard ? estimateMonthlyBenefitFromCard(parsedCard) : 0);
@@ -258,6 +260,55 @@ export function CardDetailModal({
                   </span>
                 </div>
               </div>
+            </section>
+          )}
+
+          {exclusionResult && exclusionResult.allExclusions.length > 0 && (
+            <section
+              aria-label="실적 및 혜택 제외 항목 안내"
+              data-testid="card-exclusions-section"
+              className="flex flex-col gap-2 rounded-xl border border-amber-200/80 bg-amber-50/50 p-3.5 dark:border-amber-900/40 dark:bg-amber-950/20"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="flex h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="text-xs font-bold text-amber-900 dark:text-amber-300">
+                    실적 산정 및 혜택 제외 주의 항목
+                  </span>
+                </div>
+                <span className="text-[10px] text-amber-700/80 dark:text-amber-400/80">
+                  {exclusionResult.detectedExclusions.length > 0
+                    ? "카드 상품 명시 조건"
+                    : "표준 약관 공통 기준"}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {exclusionResult.allExclusions.map((item) => {
+                  const isDetected = exclusionResult.detectedExclusions.some((d) => d.id === item.id);
+                  return (
+                    <span
+                      key={item.id}
+                      data-testid={`exclusion-badge-${item.id}`}
+                      title={item.description}
+                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition ${
+                        item.warningLevel === "high"
+                          ? isDetected
+                            ? "border border-rose-300/80 bg-rose-100 text-rose-800 dark:border-rose-800/80 dark:bg-rose-950/70 dark:text-rose-200"
+                            : "border border-amber-300/80 bg-amber-100 text-amber-900 dark:border-amber-800/70 dark:bg-amber-950/60 dark:text-amber-200"
+                          : "border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      }`}
+                    >
+                      {item.shortLabel}
+                      {item.warningLevel === "high" && <span className="text-[10px]">⚠️</span>}
+                    </span>
+                  );
+                })}
+              </div>
+
+              <p className="text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-300/80">
+                ※ 세금, 공과금, 아파트관리비, 상품권(상테크) 등은 전월 실적 합산 및 혜택 제공에서 제외되므로 소비 입력 시 유의하세요.
+              </p>
             </section>
           )}
 
