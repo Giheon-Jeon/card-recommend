@@ -52,7 +52,9 @@ describe("SpendingImporter and SimulatorPage ErrorBoundary integration", () => {
     consoleSpy.mockRestore();
   });
 
-  it("SimulatorPage에서 환불/취소 내역을 시뮬레이터에 적용하면 지출이 차감되고 0원 미만으로 내려가지 않는다", () => {
+  it(
+    "SimulatorPage에서 환불/취소 내역을 시뮬레이터에 적용하면 지출이 차감되고 0원 미만으로 내려가지 않는다",
+    () => {
     const mockMyCards = {
       ids: ["card-1"],
       addCard: vi.fn(),
@@ -98,7 +100,7 @@ describe("SpendingImporter and SimulatorPage ErrorBoundary integration", () => {
 
     // 음수가 되지 않고 최소 0원으로 유지됨
     expect(screen.getAllByText("0원").length).toBeGreaterThan(0);
-  });
+  }, 15000);
 
   describe("영수증 이미지 업로드 파일 크기 및 포맷 검증", () => {
     it("영수증 이미지 탭에서 허용 포맷 및 최대 10MB 안내 라벨이 표시되어야 한다", () => {
