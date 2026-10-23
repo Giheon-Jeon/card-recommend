@@ -177,4 +177,38 @@ describe("SpendingSimulator Component Smoke Test", () => {
     expect(screen.getByText("1인 가구 자취생")).toBeInTheDocument();
     expect(screen.getByText("직장인 통근러")).toBeInTheDocument();
   });
+
+  it("etc(그 외 일반가맹점) 카테고리에는 실적주의 뱃지가 노출되고, 지출 금액 입력 시 주의 툴팁이 렌더링되어야 한다", () => {
+    const categoriesWithEtc: Category[] = [
+      { id: "cafe", label: "카페" },
+      { id: "etc", label: "그 외 일반가맹점" },
+    ];
+
+    const { rerender } = render(
+      <SpendingSimulator
+        categories={categoriesWithEtc}
+        spending={{ cafe: 50000, etc: 0 }}
+        onChange={mockOnChange}
+      />
+    );
+
+    // 실적주의 뱃지 렌더링 확인
+    expect(screen.getByTestId("category-exclusion-badge")).toBeInTheDocument();
+    // 금액이 0원일 때는 주의 툴팁 미표시
+    expect(screen.queryByTestId("category-exclusion-tooltip")).not.toBeInTheDocument();
+
+    // etc 금액 입력 후 (value > 0)
+    rerender(
+      <SpendingSimulator
+        categories={categoriesWithEtc}
+        spending={{ cafe: 50000, etc: 200000 }}
+        onChange={mockOnChange}
+      />
+    );
+
+    // 주의 툴팁 노출 확인
+    const tooltip = screen.getByTestId("category-exclusion-tooltip");
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip).toHaveTextContent("국세, 지방세, 아파트관리비, 상품권");
+  });
 });

@@ -10,6 +10,7 @@ import {
   formatPortfolioRecommendationSummary,
 } from "@/lib/recommendationShare";
 import { evaluateCardWithTaxSavings } from "@/lib/taxDeductionCalculator";
+import { getExclusionsForCard } from "@/lib/cardExclusionParser";
 
 interface RecommendationResultProps {
   ranked: CardEvaluation[];
@@ -53,6 +54,7 @@ export function RecommendationResult({
   const topTaxEvaluation = top
     ? evaluateCardWithTaxSavings(top.card, actualMonthlySpend, top.netMonthlyBenefit, annualSalary)
     : null;
+  const topExclusion = top ? getExclusionsForCard(top.card) : null;
 
   // 현재 활성화된 추천 결과에 맞춘 텍스트 생성기
   const handleGenerateShareText = (options: { includeSpendDetails?: boolean }) => {
@@ -245,6 +247,15 @@ export function RecommendationResult({
                       className="inline-flex items-center gap-1 rounded-full bg-amber-400/25 border border-amber-300/40 px-2.5 py-0.5 text-xs font-bold text-amber-200"
                     >
                       피킹률 {topTaxEvaluation.pickingRate.pickingRate}% ({topTaxEvaluation.pickingRate.tierLabel})
+                    </span>
+                  )}
+                  {topExclusion && (
+                    <span
+                      data-testid="card-exclusion-warning-badge"
+                      title={topExclusion.summaryNotice}
+                      className="inline-flex items-center gap-1 rounded-full bg-rose-400/25 border border-rose-300/40 px-2.5 py-0.5 text-xs font-bold text-rose-200"
+                    >
+                      실적 제외 주의 ({topExclusion.allExclusions.slice(0, 3).map((e) => e.shortLabel).join("·")})
                     </span>
                   )}
                   {top.card.cardType === "check" && includeTaxSavings && (

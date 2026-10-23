@@ -77,6 +77,8 @@ describe("RecommendationResult Component", () => {
     expect(within(topBanner).getByText("9,000원")).toBeInTheDocument(); // 순혜택
     expect(within(topBanner).getByText("+10,000원")).toBeInTheDocument(); // 총 혜택액
     expect(within(topBanner).getByText("-1,000원")).toBeInTheDocument(); // 월 연회비
+    expect(within(topBanner).getByTestId("card-exclusion-warning-badge")).toBeInTheDocument();
+    expect(within(topBanner).getByText(/실적 제외 주의/)).toBeInTheDocument();
 
     // 카테고리별 그리드 확인
     const winnersGrid = screen.getByTestId("category-winners-grid");
