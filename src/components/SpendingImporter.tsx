@@ -7,6 +7,7 @@ import {
   type ParsedSpendingItem,
 } from "@/lib/importerParser";
 import { parseCsvFile, validateCsvFile } from "@/lib/csvSpendingParser";
+import { parseExcelFile, validateExcelFile } from "@/lib/excelSpendingParser";
 import type { Category } from "@/types/card";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { ParsedItemsTable } from "@/components/ParsedItemsTable";
@@ -151,10 +152,16 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
     }
   };
 
+  const isExcelFile = (file: File) => {
+    const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+    return ext === ".xlsx" || ext === ".xls";
+  };
+
   const handleCsvFileChange = (file: File) => {
-    const validation = validateCsvFile(file);
+    const isExcel = isExcelFile(file);
+    const validation = isExcel ? validateExcelFile(file) : validateCsvFile(file);
     if (!validation.isValid) {
-      setAnalysisError(validation.error || "올바르지 않은 CSV 파일입니다.");
+      setAnalysisError(validation.error || "올바르지 않은 명세서 파일입니다.");
       setSelectedCsvFile(null);
       if (csvInputRef.current) csvInputRef.current.value = "";
       return;
@@ -171,7 +178,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
 
   const handleAnalyzeCsv = async () => {
     if (!selectedCsvFile) {
-      setAnalysisError("분석할 CSV 파일을 선택해 주세요.");
+      setAnalysisError("분석할 엑셀 또는 CSV 파일을 선택해 주세요.");
       return;
     }
 
@@ -180,11 +187,16 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
     setParsedItems([]);
 
     try {
-      const result = await parseCsvFile(selectedCsvFile);
+      const isExcel = isExcelFile(selectedCsvFile);
+      const result = isExcel
+        ? await parseExcelFile(selectedCsvFile)
+        : await parseCsvFile(selectedCsvFile);
+
       setParsedItems(result);
-      toast.success(`CSV 명세서에서 ${result.length}건의 지출 내역을 성공적으로 추출했습니다.`);
+      const fileTypeLabel = isExcel ? "엑셀" : "CSV";
+      toast.success(`${fileTypeLabel} 명세서에서 ${result.length}건의 지출 내역을 성공적으로 추출했습니다.`);
     } catch (err) {
-      setAnalysisError(toErrorMessage(err, "CSV 파일 분석 중 에러가 발생했습니다."));
+      setAnalysisError(toErrorMessage(err, "명세서 파일 분석 중 에러가 발생했습니다."));
     } finally {
       setIsAnalyzing(false);
     }
@@ -394,7 +406,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
           }`}
         >
           <FileSpreadsheet className="h-3.5 w-3.5" />
-          CSV 명세서
+          <span>엑셀 / CSV 명세서</span>
         </button>
         <button
           onClick={() => { setActiveTab("text"); setAnalysisError(null); }}
@@ -508,13 +520,13 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
           </div>
         )}
 
-        {/* CSV TAB */}
+        {/* CSV & EXCEL TAB */}
         {activeTab === "csv" && (
           <div className="space-y-4">
             {/* 카드사 지원 배지 안내 */}
             <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
-              <span className="font-semibold text-slate-600">자동 인식 지원:</span>
-              {["신한", "현대", "삼성", "KB국민", "롯데", "우리", "하나", "토스/뱅샐"].map((name) => (
+              <span className="font-semibold text-slate-600">8대 카드사 자동 지원:</span>
+              {["신한", "현대", "삼성", "KB국민", "롯데", "우리", "하나", "NH농협", "토스/뱅샐"].map((name) => (
                 <span key={name} className="rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-600">
                   {name}
                 </span>
@@ -527,13 +539,13 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
                   type="file"
                   ref={csvInputRef}
                   onChange={handleCsvFileSelect}
-                  accept=".csv,.txt,text/csv,application/vnd.ms-excel"
-                  aria-label="CSV 명세서 파일 선택"
+                  accept=".xlsx,.xls,.csv,.txt,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  aria-label="엑셀 및 CSV 명세서 파일 선택"
                   className="hidden"
                 />
                 <button
                   type="button"
-                  aria-label="카드사 결제 내역 CSV 파일 업로드"
+                  aria-label="카드사 결제 내역 엑셀 및 CSV 파일 업로드"
                   onDragOver={handleCsvDragOver}
                   onDragLeave={handleCsvDragLeave}
                   onDrop={handleCsvDrop}
@@ -545,8 +557,8 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
                   }`}
                 >
                   <FileSpreadsheet className="h-8 w-8 text-slate-400 mb-2 group-hover:text-indigo-500" />
-                  <p className="text-xs font-bold text-slate-700">카드사 결제 내역 CSV 파일 업로드</p>
-                  <p className="mt-1 text-[10px] text-slate-400">최대 5MB, UTF-8 및 EUC-KR(CP949) 인코딩 자동 감지</p>
+                  <p className="text-xs font-bold text-slate-700">카드사 결제 내역 엑셀(.xlsx/.xls) 및 CSV 파일 업로드</p>
+                  <p className="mt-1 text-[10px] text-slate-400">엑셀 최대 10MB, CSV 최대 5MB, UTF-8 및 EUC-KR(CP949) 자동 감지</p>
                 </button>
               </>
             ) : (
@@ -576,11 +588,11 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
                       {isAnalyzing ? (
                         <>
                           <RefreshCw className="h-3 w-3 animate-spin" />
-                          CSV 분석 중...
+                          {isExcelFile(selectedCsvFile) ? "엑셀" : "CSV"} 분석 중...
                         </>
                       ) : (
                         <>
-                          CSV 분석 시작
+                          {isExcelFile(selectedCsvFile) ? "엑셀" : "CSV"} 분석 시작
                           <ArrowRight className="h-3.5 w-3.5" />
                         </>
                       )}
@@ -593,7 +605,7 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
             <div className="flex items-start gap-2 rounded-xl bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-600 leading-relaxed">
               <HelpCircle className="h-4 w-4 text-indigo-500 shrink-0 mt-0.5" />
               <div>
-                카드사 웹사이트(신한, 현대, 삼성, KB국민 등)의 결제/승인내역 페이지에서 다운로드한 CSV 파일을 그대로 업로드하세요. 가맹점명, 승인금액 및 환불/취소 내역을 자동으로 판별하여 카테고리별로 분류합니다.
+                주요 8개 카드사(신한, 현대, 삼성, KB국민, 롯데, 우리, 하나, NH농협 등)에서 내려받은 엑셀(.xlsx/.xls) 또는 CSV 파일을 그대로 업로드하세요. 가맹점명, 승인금액 및 환불/취소 내역을 자동으로 판별하여 카테고리별로 정형화합니다.
               </div>
             </div>
           </div>
