@@ -20,7 +20,7 @@ describe("SpendingImporter and SimulatorPage ErrorBoundary integration", () => {
 
     expect(screen.getByText("외부 지출 내역 가져오기")).toBeInTheDocument();
     expect(screen.getByText("체험용 데모")).toBeInTheDocument();
-    expect(screen.getByText("CSV 명세서")).toBeInTheDocument();
+    expect(screen.getByText("엑셀 / CSV 명세서")).toBeInTheDocument();
     expect(screen.getByText("결제 내역 텍스트")).toBeInTheDocument();
     expect(screen.getByText("영수증 이미지")).toBeInTheDocument();
   });
@@ -226,39 +226,56 @@ describe("SpendingImporter and SimulatorPage ErrorBoundary integration", () => {
     });
   });
 
-  describe("카드사 결제 내역 CSV 파일 업로드 및 파싱 연동", () => {
-    it("CSV 명세서 탭에서 자동 인식 카드사 안내 및 드롭존이 렌더링되어야 한다", () => {
+  describe("카드사 결제 내역 엑셀 및 CSV 파일 업로드 및 파싱 연동", () => {
+    it("명세서 탭에서 자동 인식 카드사 안내 및 드롭존이 렌더링되어야 한다", () => {
       render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
-      const csvTabButton = screen.getByRole("button", { name: "CSV 명세서" });
+      const csvTabButton = screen.getByRole("button", { name: "엑셀 / CSV 명세서" });
       fireEvent.click(csvTabButton);
 
-      expect(screen.getByText("카드사 결제 내역 CSV 파일 업로드")).toBeInTheDocument();
-      expect(screen.getByText(/최대 5MB, UTF-8 및 EUC-KR\(CP949\) 인코딩 자동 감지/)).toBeInTheDocument();
+      expect(screen.getByText(/카드사 결제 내역 엑셀.*CSV 파일 업로드/)).toBeInTheDocument();
+      expect(screen.getByText(/엑셀 최대 10MB, CSV 최대 5MB/)).toBeInTheDocument();
       expect(screen.getByText("신한")).toBeInTheDocument();
       expect(screen.getByText("현대")).toBeInTheDocument();
       expect(screen.getByText("삼성")).toBeInTheDocument();
       expect(screen.getByText("KB국민")).toBeInTheDocument();
+      expect(screen.getByText("NH농협")).toBeInTheDocument();
     });
 
     it("5MB를 초과하는 CSV 파일 업로드 시 에러 메시지를 표시한다", () => {
       render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
-      const csvTabButton = screen.getByRole("button", { name: "CSV 명세서" });
+      const csvTabButton = screen.getByRole("button", { name: "엑셀 / CSV 명세서" });
       fireEvent.click(csvTabButton);
 
       const largeCsv = new File(["dummy"], "large.csv", { type: "text/csv" });
       Object.defineProperty(largeCsv, "size", { value: 6 * 1024 * 1024 }); // 6MB
 
-      const input = screen.getByLabelText("CSV 명세서 파일 선택");
+      const input = screen.getByLabelText(/명세서 파일 선택/);
       fireEvent.change(input, { target: { files: [largeCsv] } });
 
       expect(screen.getByText("CSV 파일 크기는 최대 5MB 이하만 업로드 가능합니다.")).toBeInTheDocument();
+    });
+
+    it("10MB를 초과하는 엑셀 파일 업로드 시 에러 메시지를 표시한다", () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+      const csvTabButton = screen.getByRole("button", { name: "엑셀 / CSV 명세서" });
+      fireEvent.click(csvTabButton);
+
+      const largeExcel = new File(["dummy"], "huge.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      Object.defineProperty(largeExcel, "size", { value: 12 * 1024 * 1024 }); // 12MB
+
+      const input = screen.getByLabelText(/명세서 파일 선택/);
+      fireEvent.change(input, { target: { files: [largeExcel] } });
+
+      expect(screen.getByText("엑셀 파일 크기는 최대 10MB 이하만 업로드 가능합니다.")).toBeInTheDocument();
     });
 
     it("정상 CSV 파일을 업로드하고 파싱 실행 시 미리보기 테이블에 항목이 표시되고 시뮬레이터에 적용된다", async () => {
       const handleImport = vi.fn();
       render(<SpendingImporter categories={mockCategories} onImport={handleImport} />);
 
-      const csvTabButton = screen.getByRole("button", { name: "CSV 명세서" });
+      const csvTabButton = screen.getByRole("button", { name: "엑셀 / CSV 명세서" });
       fireEvent.click(csvTabButton);
 
       const csvContent = `이용일자,가맹점명,이용금액,승인구분
@@ -269,7 +286,7 @@ describe("SpendingImporter and SimulatorPage ErrorBoundary integration", () => {
       const validCsvFile = new File([csvContent], "card-history.csv", { type: "text/csv" });
       Object.defineProperty(validCsvFile, "size", { value: 2048 });
 
-      const input = screen.getByLabelText("CSV 명세서 파일 선택");
+      const input = screen.getByLabelText(/명세서 파일 선택/);
       fireEvent.change(input, { target: { files: [validCsvFile] } });
 
       expect(screen.getByText("파일 준비됨: card-history.csv")).toBeInTheDocument();
@@ -293,6 +310,50 @@ describe("SpendingImporter and SimulatorPage ErrorBoundary integration", () => {
           { merchant: "스타벅스 강남점", amount: 5000, category: "cafe" },
           { merchant: "이마트 역삼점", amount: 32000, category: "mart" },
           { merchant: "스타벅스 강남점", amount: -5000, category: "cafe" },
+        ],
+        "merge"
+      );
+    });
+
+    it("정상 엑셀(.xls) 파일을 업로드하고 파싱 실행 시 미리보기 테이블에 항목이 표시되고 시뮬레이터에 적용된다", async () => {
+      const handleImport = vi.fn();
+      render(<SpendingImporter categories={mockCategories} onImport={handleImport} />);
+
+      const csvTabButton = screen.getByRole("button", { name: "엑셀 / CSV 명세서" });
+      fireEvent.click(csvTabButton);
+
+      const htmlXlsContent = `
+        <table>
+          <tr><th>이용일시</th><th>가맹점명</th><th>이용금액</th><th>승인구분</th></tr>
+          <tr><td>2026-10-01</td><td>배달의민족</td><td>24000</td><td>정상</td></tr>
+          <tr><td>2026-10-02</td><td>카카오T택시</td><td>12800</td><td>정상</td></tr>
+        </table>
+      `;
+
+      const validExcelFile = new File([htmlXlsContent], "statement.xls", {
+        type: "application/vnd.ms-excel",
+      });
+      Object.defineProperty(validExcelFile, "size", { value: 4096 });
+
+      const input = screen.getByLabelText(/명세서 파일 선택/);
+      fireEvent.change(input, { target: { files: [validExcelFile] } });
+
+      expect(screen.getByText("파일 준비됨: statement.xls")).toBeInTheDocument();
+
+      const analyzeBtn = screen.getByRole("button", { name: /엑셀 분석 시작/ });
+      fireEvent.click(analyzeBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText("지출 파싱 결과 미리보기 (2건)")).toBeInTheDocument();
+      });
+
+      const applyBtn = screen.getByRole("button", { name: /지출 시뮬레이터에 적용/ });
+      fireEvent.click(applyBtn);
+
+      expect(handleImport).toHaveBeenCalledWith(
+        [
+          { merchant: "배달의민족", amount: 24000, category: "dining" },
+          { merchant: "카카오T택시", amount: 12800, category: "transport" },
         ],
         "merge"
       );
