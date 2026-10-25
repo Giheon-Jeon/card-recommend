@@ -1,9 +1,12 @@
 import type { Category } from "@/types/card";
 
 export interface ParsedSpendingItem {
+  id?: string;
   merchant: string;
   amount: number;
   category: string; // convenience, cafe, transport, mobile, onlineShopping, mart, dining, culture, gas, etc
+  isDuplicate?: boolean;
+  sourceReceiptId?: string;
 }
 
 export type ImportMode = "merge" | "overwrite";

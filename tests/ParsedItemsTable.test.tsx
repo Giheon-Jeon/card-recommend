@@ -342,4 +342,39 @@ describe("ParsedItemsTable 가맹점명 및 금액 유효성 검사", () => {
 
     expect(handleApply).toHaveBeenCalledTimes(1);
   });
+
+  describe("다중 영수증 중복 의심 항목 렌더링 및 일괄 선택", () => {
+    it("중복 의심 항목이 있을 때 경고 배너와 행 뱃지가 표시되고 일괄 선택할 수 있어야 한다", () => {
+      const duplicateItems: ParsedSpendingItem[] = [
+        { merchant: "스타벅스 강남점", amount: 4500, category: "cafe", isDuplicate: true },
+        { merchant: "스타벅스 강남점", amount: 4500, category: "cafe", isDuplicate: true },
+        { merchant: "이마트", amount: 35000, category: "mart", isDuplicate: false },
+      ];
+
+      render(
+        <ParsedItemsTable
+          categories={mockCategories}
+          items={duplicateItems}
+          onUpdateItem={vi.fn()}
+          onDeleteItem={vi.fn()}
+          onDeleteSelected={vi.fn()}
+          importMode="merge"
+          onImportModeChange={vi.fn()}
+          onCancel={vi.fn()}
+          onApply={vi.fn()}
+        />
+      );
+
+      // 경고 배너 표시 확인
+      expect(screen.getByText(/중복 의심 항목 2건/)).toBeInTheDocument();
+      expect(screen.getAllByText("중복 의심").length).toBe(2);
+
+      // 일괄 선택 버튼 클릭
+      const selectDupBtn = screen.getByRole("button", { name: "중복 건 일괄 선택" });
+      fireEvent.click(selectDupBtn);
+
+      // 선택 삭제 버튼에 2개 선택됨이 표시되어야 함
+      expect(screen.getAllByRole("button", { name: /선택 삭제 \(2개\)/ }).length).toBeGreaterThan(0);
+    });
+  });
 });

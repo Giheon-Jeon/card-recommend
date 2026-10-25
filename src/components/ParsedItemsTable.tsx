@@ -23,8 +23,17 @@ export function ParsedItemsTable({
   const toast = useToast();
 
   const hasRefund = items.some((item) => item.amount < 0);
+  const duplicateIndices = items
+    .map((item, idx) => (item.isDuplicate ? idx : -1))
+    .filter((idx) => idx !== -1);
+  const hasDuplicates = duplicateIndices.length > 0;
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
   const totalCount = items.length;
+
+  const handleSelectDuplicates = () => {
+    setSelectedIndices(new Set(duplicateIndices));
+    toast.info(`중복 의심 항목 ${duplicateIndices.length}건이 선택되었습니다.`);
+  };
 
   const handleToggleAll = () => {
     if (selectedIndices.size === items.length) {
@@ -109,6 +118,25 @@ export function ParsedItemsTable({
         </div>
       )}
 
+      {/* 중복 의심 항목 안내 배너 */}
+      {hasDuplicates && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2.5 text-xs text-amber-800">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>중복 의심 항목 {duplicateIndices.length}건</strong>이 감지되었습니다 (동일 가맹점 및 금액).
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleSelectDuplicates}
+            className="rounded-lg border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-800 shadow-2xs hover:bg-amber-100/60 transition-colors"
+          >
+            중복 건 일괄 선택
+          </button>
+        </div>
+      )}
+
       {/* 총 파싱 요약 배너 */}
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-2.5">
         <div className="flex items-center gap-3">
@@ -184,6 +212,11 @@ export function ParsedItemsTable({
                       {isRefund && (
                         <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-100 text-rose-700">
                           환불/취소
+                        </span>
+                      )}
+                      {item.isDuplicate && (
+                        <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800" title="동일한 가맹점명과 금액의 중복 의심 항목입니다">
+                          중복 의심
                         </span>
                       )}
                       <input

@@ -378,5 +378,79 @@ describe("SpendingImporter and SimulatorPage ErrorBoundary integration", () => {
       expect(screen.getByDisplayValue("스타벅스 강남점(취소)")).toBeInTheDocument();
       expect(screen.getByText("환불/취소")).toBeInTheDocument();
     });
+
+    it("체험용 데모 탭에서 다중 영수증 일괄 분석 데모를 실행하면 중복 의심 건을 포함한 5건 데이터가 표시된다", async () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+
+      const demoTabButton = screen.getByRole("button", { name: /체험용 데모/ });
+      fireEvent.click(demoTabButton);
+
+      const batchDemoBtn = screen.getByRole("button", { name: /다중 영수증\(3장\)/ });
+      fireEvent.click(batchDemoBtn);
+
+      await waitFor(
+        () => {
+          expect(screen.getByText("지출 파싱 결과 미리보기 (5건)")).toBeInTheDocument();
+        },
+        { timeout: 2500 }
+      );
+
+      // 중복 의심 배너 확인
+      expect(screen.getByText(/중복 의심 항목 2건/)).toBeInTheDocument();
+    });
+  });
+
+  describe("[Issue #99] 영수증 다중 일괄 업로드(Batch OCR) 및 썸네일 대기 큐 연동", () => {
+    it("여러 영수증 이미지를 한 번에 업로드하면 썸네일 대기 큐에 등록되고 개별 삭제할 수 있어야 한다", () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+
+      const imageTabButton = screen.getByRole("button", { name: /영수증 이미지/ });
+      fireEvent.click(imageTabButton);
+
+      const file1 = new File(["dummy-1"], "receipt-cafe.jpg", { type: "image/jpeg" });
+      const file2 = new File(["dummy-2"], "receipt-mart.png", { type: "image/png" });
+
+      const input = screen.getByLabelText("이미지 파일 선택");
+      fireEvent.change(input, { target: { files: [file1, file2] } });
+
+      // 큐 카운터 및 파일명 확인
+      expect(screen.getByText("2 / 10장")).toBeInTheDocument();
+      expect(screen.getByText("파일 준비됨: receipt-cafe.jpg")).toBeInTheDocument();
+      expect(screen.getByText("파일 준비됨: receipt-mart.png")).toBeInTheDocument();
+
+      // 개별 삭제 버튼 테스트
+      const deleteButtons = screen.getAllByLabelText("영수증 항목 삭제");
+      expect(deleteButtons).toHaveLength(2);
+      fireEvent.click(deleteButtons[0]);
+
+      // 1장만 남아있는지 확인
+      expect(screen.getByText("1 / 10장")).toBeInTheDocument();
+      expect(screen.queryByText("파일 준비됨: receipt-cafe.jpg")).not.toBeInTheDocument();
+      expect(screen.getByText("파일 준비됨: receipt-mart.png")).toBeInTheDocument();
+
+      // 전체 비우기 클릭 시 드롭존 초기화
+      const clearAllBtn = screen.getByRole("button", { name: "전체 비우기" });
+      fireEvent.click(clearAllBtn);
+
+      expect(screen.getByText(/영수증 이미지 다중 일괄 업로드/)).toBeInTheDocument();
+    });
+
+    it("최대 10장을 초과하여 업로드할 경우 초과된 파일은 제외하고 안내 메시지를 표시한다", () => {
+      render(<SpendingImporter categories={mockCategories} onImport={vi.fn()} />);
+
+      const imageTabButton = screen.getByRole("button", { name: /영수증 이미지/ });
+      fireEvent.click(imageTabButton);
+
+      const files = Array.from(
+        { length: 12 },
+        (_, i) => new File([`content-${i}`], `receipt-${i + 1}.jpg`, { type: "image/jpeg" })
+      );
+
+      const input = screen.getByLabelText("이미지 파일 선택");
+      fireEvent.change(input, { target: { files } });
+
+      expect(screen.getByText("10 / 10장")).toBeInTheDocument();
+      expect(screen.getByText(/최대 10장 한도를 초과한 2장의 파일은 제외되었습니다/)).toBeInTheDocument();
+    });
   });
 });
