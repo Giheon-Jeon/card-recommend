@@ -1,11 +1,34 @@
-import { useState, useRef } from "react";
-import { Upload, FileText, AlertCircle, ArrowRight, HelpCircle, Zap, RefreshCw, FileSpreadsheet, SlidersHorizontal } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import {
+  Upload,
+  FileText,
+  AlertCircle,
+  ArrowRight,
+  HelpCircle,
+  Zap,
+  RefreshCw,
+  FileSpreadsheet,
+  SlidersHorizontal,
+  X,
+  Plus,
+  CheckCircle2,
+  AlertTriangle,
+  RotateCcw,
+} from "lucide-react";
 import {
   parseTextLocally,
   parseWithGemini,
-  validateImageFile,
   type ParsedSpendingItem,
 } from "@/lib/importerParser";
+import {
+  createBatchReceiptItem,
+  validateBatchFiles,
+  processReceiptBatchSequentially,
+  retryBatchReceiptItem,
+  mergeAndDeduplicateItems,
+  MAX_BATCH_RECEIPT_COUNT,
+  type BatchReceiptItem,
+} from "@/lib/batchReceiptOcr";
 import { parseCsvFile, validateCsvFile } from "@/lib/csvSpendingParser";
 import { parseExcelFile, validateExcelFile } from "@/lib/excelSpendingParser";
 import type { Category } from "@/types/card";
@@ -37,10 +60,17 @@ function toErrorMessage(err: unknown, fallback: string): string {
 export function SpendingImporter({ categories, onImport }: SpendingImporterProps) {
   const [activeTab, setActiveTab] = useState<TabType>("demo");
   const [textInput, setTextInput] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  // [Issue #99] 다중 영수증 대기 큐 및 순차 분석 진행률 상태
+  const [receiptQueue, setReceiptQueue] = useState<BatchReceiptItem[]>([]);
+  const [batchProgress, setBatchProgress] = useState<{
+    completed: number;
+    total: number;
+    currentName?: string;
+  }>({ completed: 0, total: 0 });
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // 파싱된 지출 내역 임시 보관
   const [parsedItems, setParsedItems] = useState<ParsedSpendingItem[]>([]);
@@ -67,6 +97,21 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
     setDraftApiKey(savedApiKey);
   }
 
+  // 메모리 누수 방지: 썸네일 ObjectURL 해제
+  useEffect(() => {
+    return () => {
+      receiptQueue.forEach((item) => {
+        if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
+          try {
+            URL.revokeObjectURL(item.previewUrl);
+          } catch {
+            // ignore
+          }
+        }
+      });
+    };
+  }, [receiptQueue]);
+
   const handleSaveApiKey = (type?: StorageType) => {
     saveApiKey(draftApiKey.trim(), type);
     toast.success("Gemini API Key가 안전하게 저장되었습니다.");
@@ -91,40 +136,70 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileChange(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFilesChange(Array.from(e.dataTransfer.files));
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileChange(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      handleFilesChange(Array.from(e.target.files));
     }
   };
 
-  const handleFileChange = (file: File) => {
-    const validation = validateImageFile(file);
-    if (!validation.isValid) {
-      setAnalysisError(validation.error || "올바르지 않은 파일입니다.");
-      setSelectedFile(null);
-      setImagePreview(null);
+  // [Issue #99] 복수 영수증 파일 검증 및 큐에 등록
+  const handleFilesChange = (incomingFiles: File[]) => {
+    setAnalysisError(null);
+    const { validFiles, errors } = validateBatchFiles(
+      incomingFiles,
+      receiptQueue.length,
+      MAX_BATCH_RECEIPT_COUNT
+    );
+
+    if (errors.length > 0) {
+      setAnalysisError(errors.join(" "));
+    }
+
+    if (validFiles.length === 0) {
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    setSelectedFile(file);
-    setAnalysisError(null);
+    const newItems = validFiles.map((f) => createBatchReceiptItem(f));
+    const nextQueue = [...receiptQueue, ...newItems];
+    setReceiptQueue(nextQueue);
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // 개별 영수증 큐에서 삭제
+  const handleRemoveQueueItem = (id: string) => {
+    setReceiptQueue((prev) => {
+      const target = prev.find((it) => it.id === id);
+      if (target?.previewUrl?.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(target.previewUrl);
+        } catch {
+          // ignore
+        }
+      }
+      return prev.filter((it) => it.id !== id);
+    });
+  };
+
+  // 큐 전체 초기화
   const clearFile = () => {
-    setSelectedFile(null);
-    setImagePreview(null);
+    receiptQueue.forEach((it) => {
+      if (it.previewUrl?.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(it.previewUrl);
+        } catch {
+          // ignore
+        }
+      }
+    });
+    setReceiptQueue([]);
+    setBatchProgress({ completed: 0, total: 0 });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -264,9 +339,42 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
     }
   };
 
-  // 이미지 분석 실행
+  // [Issue #99] 단일 실패 항목 개별 재시도 핸들러
+  const handleRetryItem = async (id: string) => {
+    if (!savedApiKey.trim()) {
+      setAnalysisError("재시도 분석을 실행하려면 Gemini API Key 등록이 필요합니다.");
+      return;
+    }
+
+    const targetItem = receiptQueue.find((it) => it.id === id);
+    if (!targetItem) return;
+
+    setReceiptQueue((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, status: "processing", errorMessage: undefined } : it))
+    );
+
+    try {
+      const updated = await retryBatchReceiptItem(targetItem, savedApiKey.trim());
+      setReceiptQueue((prev) => {
+        const next = prev.map((it) => (it.id === id ? updated : it));
+        const { mergedItems } = mergeAndDeduplicateItems(next);
+        setParsedItems(mergedItems);
+        return next;
+      });
+
+      if (updated.status === "completed") {
+        toast.success(`영수증(${targetItem.file.name}) 재시도 분석이 완료되었습니다.`);
+      } else {
+        toast.error(`영수증(${targetItem.file.name}) 재시도에 실패했습니다.`);
+      }
+    } catch (err) {
+      toast.error(toErrorMessage(err, "재시도 중 에러가 발생했습니다."));
+    }
+  };
+
+  // [Issue #99] 다중 영수증 순차 배치 분석 실행
   const handleAnalyzeImage = async () => {
-    if (!selectedFile) {
+    if (receiptQueue.length === 0) {
       setAnalysisError("분석할 이미지 파일을 선택해 주세요.");
       return;
     }
@@ -278,31 +386,103 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
 
     setIsAnalyzing(true);
     setAnalysisError(null);
-    setParsedItems([]);
+    setBatchProgress({ completed: 0, total: receiptQueue.length });
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
-      const result = await parseWithGemini(savedApiKey.trim(), undefined, selectedFile);
-      if (result.length === 0) {
-        setAnalysisError("이미지에서 지출 내역을 추출하지 못했습니다.");
+      const results = await processReceiptBatchSequentially(
+        receiptQueue,
+        savedApiKey.trim(),
+        {
+          delayMs: 350,
+          signal: controller.signal,
+          callbacks: {
+            onItemStart: (item, index, total) => {
+              setBatchProgress({
+                completed: index,
+                total,
+                currentName: item.file.name,
+              });
+              setReceiptQueue((prev) =>
+                prev.map((it) => (it.id === item.id ? { ...it, status: "processing" } : it))
+              );
+            },
+            onItemComplete: (updatedItem, index, total) => {
+              setBatchProgress({
+                completed: index + 1,
+                total,
+                currentName: updatedItem.file.name,
+              });
+              setReceiptQueue((prev) =>
+                prev.map((it) => (it.id === updatedItem.id ? updatedItem : it))
+              );
+            },
+            onProgress: (comp, total, curr) => {
+              setBatchProgress({
+                completed: comp,
+                total,
+                currentName: curr?.file.name,
+              });
+            },
+          },
+        }
+      );
+
+      setReceiptQueue(results);
+      const { mergedItems, duplicateCount } = mergeAndDeduplicateItems(results);
+
+      if (mergedItems.length === 0) {
+        setAnalysisError("영수증 이미지에서 지출 내역을 추출하지 못했습니다.");
       } else {
-        setParsedItems(result);
+        setParsedItems(mergedItems);
+        const successCount = results.filter((r) => r.status === "completed").length;
+        const failCount = results.filter((r) => r.status === "error").length;
+
+        if (failCount > 0) {
+          toast.warning(`영수증 ${successCount}장 성공, ${failCount}장 실패. 실패 건은 아래에서 개별 재시도할 수 있습니다.`);
+        } else {
+          const dupMsg = duplicateCount > 0 ? ` (중복 의심 ${duplicateCount}건)` : "";
+          toast.success(`영수증 ${successCount}장에서 총 ${mergedItems.length}건의 지출 내역을 추출했습니다.${dupMsg}`);
+        }
       }
     } catch (err) {
       setAnalysisError(toErrorMessage(err, "이미지 분석 중 에러가 발생했습니다."));
     } finally {
       setIsAnalyzing(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  // 분석 중단
+  const handleAbortBatch = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsAnalyzing(false);
+      toast.info("영수증 분석 작업이 중단되었습니다.");
     }
   };
 
   // 데모 실행 (API Key 없이 기능을 체험할 수 있도록 미리 준비된 결과를 흉내낸 딜레이 후 표시)
-  const handleRunDemo = (demoType: "cafe" | "convenience" | "text" | "csv") => {
+  const handleRunDemo = (demoType: "cafe" | "convenience" | "text" | "csv" | "batch") => {
     setIsAnalyzing(true);
     setAnalysisError(null);
     setParsedItems([]);
 
     setTimeout(() => {
       setIsAnalyzing(false);
-      if (demoType === "cafe") {
+      if (demoType === "batch") {
+        // [Issue #99] 다중 영수증 일괄 분석 모의 데모 (중복 항목 포함)
+        setParsedItems([
+          { merchant: "소담 커피", amount: 4500, category: "cafe", isDuplicate: true },
+          { merchant: "소담 커피", amount: 4500, category: "cafe", isDuplicate: true },
+          { merchant: "GS25 강남역점", amount: 3200, category: "convenience" },
+          { merchant: "파리바게뜨 역삼역점", amount: 8900, category: "cafe" },
+          { merchant: "GS25 강남역점", amount: 2500, category: "convenience" },
+        ]);
+        toast.info("다중 영수증 3장 일괄 분석 모의 데모가 로드되었습니다. (동일 가맹점 중복 의심 2건 포함)");
+      } else if (demoType === "cafe") {
         setParsedItems([
           { merchant: "소담 커피", amount: 4500, category: "cafe" },
           { merchant: "소담 커피(라떼)", amount: 5000, category: "cafe" },
@@ -436,7 +616,21 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
             <p className="text-xs text-slate-500">
               API Key 없이도 이미 생성된 고화질 모의 영수증, 결제 내역 텍스트, 카드사 CSV 명세서 데이터를 분석해 볼 수 있습니다. 클릭하면 즉각 분석 시뮬레이션이 진행됩니다.
             </p>
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-5">
+              <button
+                onClick={() => handleRunDemo("batch")}
+                className="group flex flex-col items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 transition-all duration-250 hover:border-indigo-400 hover:bg-indigo-50/70 text-center"
+              >
+                <div className="mb-2.5 flex h-20 w-16 items-center justify-center rounded-md border border-dashed border-indigo-300 bg-white text-indigo-600 group-hover:scale-105 transition-transform shadow-sm">
+                  <div className="flex -space-x-2">
+                    <Upload className="h-5 w-5 text-indigo-600" />
+                    <Upload className="h-5 w-5 text-indigo-400" />
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-indigo-900">다중 영수증(3장)</span>
+                <span className="mt-1 text-[10px] text-indigo-600 font-medium">배치 큐 & 중복 감지</span>
+              </button>
+
               <button
                 onClick={() => handleRunDemo("csv")}
                 className="group flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50/50 p-4 transition-all duration-250 hover:border-emerald-300 hover:bg-emerald-50/20 text-center"
@@ -611,74 +805,237 @@ export function SpendingImporter({ categories, onImport }: SpendingImporterProps
           </div>
         )}
 
-        {/* IMAGE TAB */}
+        {/* IMAGE TAB: [Issue #99] 다중 영수증 일괄 업로드 드롭존 및 썸네일 대기 큐 */}
         {activeTab === "image" && (
           <div className="space-y-4">
-            {!imagePreview ? (
-              <>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic"
-                  aria-label="이미지 파일 선택"
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  aria-label="영수증 또는 이용 명세서 캡처 이미지 업로드"
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    isDragOver
-                      ? "border-indigo-500 bg-indigo-50/20 scale-[0.98]"
-                      : "border-slate-300 hover:border-indigo-400 hover:bg-slate-50/50"
-                  }`}
-                >
-                  <Upload className="h-8 w-8 text-slate-400 mb-2 group-hover:text-indigo-500" />
-                  <p className="text-xs font-bold text-slate-700">영수증 또는 이용 명세서 캡처 업로드</p>
-                  <p className="mt-1 text-[10px] text-slate-400">최대 10MB, JPG/PNG/WebP 지원</p>
-                </button>
-              </>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              multiple
+              accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic"
+              aria-label="이미지 파일 선택"
+              className="hidden"
+            />
+
+            {receiptQueue.length === 0 ? (
+              <button
+                type="button"
+                aria-label="영수증 또는 이용 명세서 캡처 이미지 업로드"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  isDragOver
+                    ? "border-indigo-500 bg-indigo-50/20 scale-[0.98]"
+                    : "border-slate-300 hover:border-indigo-400 hover:bg-slate-50/50"
+                }`}
+              >
+                <Upload className="h-8 w-8 text-slate-400 mb-2 group-hover:text-indigo-500" />
+                <p className="text-xs font-bold text-slate-700">
+                  영수증 이미지 다중 일괄 업로드 (최대 {MAX_BATCH_RECEIPT_COUNT}장)
+                </p>
+                <p className="mt-1 text-[10px] text-slate-400">최대 10MB, JPG/PNG/WebP 지원</p>
+              </button>
             ) : (
-              <div className="flex flex-col sm:flex-row gap-4 items-center rounded-xl border border-slate-200 p-3 bg-slate-50/30">
-                <div className="relative h-28 w-24 overflow-hidden rounded-md border border-slate-300 bg-white">
-                  <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
-                </div>
-                <div className="flex-1 w-full text-center sm:text-left space-y-2">
-                  <div className="text-xs font-semibold text-slate-700 truncate">
-                    파일 준비됨: {selectedFile?.name}
+              <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/30 p-4">
+                {/* 큐 상단 컨트롤 바 */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700">영수증 대기 큐</span>
+                    <span className="rounded-md bg-indigo-100 px-2 py-0.5 text-[11px] font-extrabold text-indigo-700">
+                      {receiptQueue.length} / {MAX_BATCH_RECEIPT_COUNT}장
+                    </span>
                   </div>
-                  <div className="text-[10px] text-slate-400">
-                    크기: {selectedFile ? (selectedFile.size / 1024).toFixed(1) : 0} KB
-                  </div>
-                  <div className="flex gap-2 justify-center sm:justify-start">
+
+                  <div className="flex items-center gap-2">
+                    {receiptQueue.length < MAX_BATCH_RECEIPT_COUNT && (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isAnalyzing}
+                        className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        <Plus className="h-3 w-3" />
+                        영수증 추가
+                      </button>
+                    )}
                     <button
+                      type="button"
                       onClick={clearFile}
-                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-[10px] font-semibold text-slate-600 bg-white hover:bg-slate-50"
-                    >
-                      파일 교체
-                    </button>
-                    <button
-                      onClick={handleAnalyzeImage}
                       disabled={isAnalyzing}
-                      className="flex items-center gap-1 rounded-lg bg-indigo-600 px-4.5 py-1.5 text-[10px] font-bold text-white hover:bg-indigo-700 disabled:bg-indigo-400"
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-2xs hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
                     >
-                      {isAnalyzing ? (
-                        <>
-                          <RefreshCw className="h-3 w-3 animate-spin" />
-                          AI 분석 중...
-                        </>
-                      ) : (
-                        <>영수증 분석 시작</>
-                      )}
+                      전체 비우기
                     </button>
+                  </div>
+                </div>
+
+                {/* 프로그레스 바 (분석 진행 중이거나 일부 완료되었을 때) */}
+                {(isAnalyzing || batchProgress.completed > 0) && (
+                  <div className="space-y-1.5 rounded-lg border border-indigo-100 bg-indigo-50/40 p-3">
+                    <div className="flex items-center justify-between text-xs font-bold text-indigo-900">
+                      <span>분석 진행 상태</span>
+                      <span>
+                        {batchProgress.completed} / {batchProgress.total} 완료 (
+                        {batchProgress.total > 0
+                          ? Math.round((batchProgress.completed / batchProgress.total) * 100)
+                          : 0}
+                        %)
+                      </span>
+                    </div>
+
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-indigo-100">
+                      <div
+                        className="h-full bg-indigo-600 transition-all duration-300 ease-out"
+                        style={{
+                          width: `${
+                            batchProgress.total > 0
+                              ? (batchProgress.completed / batchProgress.total) * 100
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+
+                    {isAnalyzing && batchProgress.currentName && (
+                      <p className="text-[10px] text-indigo-600 animate-pulse truncate">
+                        현재 분석 중: {batchProgress.currentName} (Gemini AI Vision)
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* 썸네일 그리드 */}
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {receiptQueue.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className={`relative flex items-center gap-3 rounded-lg border p-2.5 bg-white shadow-2xs transition-all ${
+                        item.status === "processing"
+                          ? "border-indigo-400 ring-2 ring-indigo-500/10"
+                          : item.status === "error"
+                          ? "border-rose-300 bg-rose-50/20"
+                          : item.status === "completed"
+                          ? "border-emerald-300 bg-emerald-50/20"
+                          : "border-slate-200"
+                      }`}
+                    >
+                      {/* 썸네일 */}
+                      <div className="relative h-14 w-12 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100 flex items-center justify-center">
+                        {item.previewUrl ? (
+                          <img
+                            src={item.previewUrl}
+                            alt={`Preview ${idx + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Upload className="h-5 w-5 text-slate-400" />
+                        )}
+                      </div>
+
+                      {/* 정보 및 상태 */}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="text-xs font-semibold text-slate-700 truncate" title={item.file.name}>
+                          파일 준비됨: {item.file.name}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          크기: {(item.file.size / 1024).toFixed(1)} KB
+                        </div>
+
+                        {/* 상태 뱃지 */}
+                        <div className="flex items-center gap-1.5 pt-0.5">
+                          {item.status === "pending" && (
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">
+                              대기중
+                            </span>
+                          )}
+                          {item.status === "processing" && (
+                            <span className="inline-flex items-center gap-1 rounded bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700 animate-pulse">
+                              <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+                              분석중
+                            </span>
+                          )}
+                          {item.status === "completed" && (
+                            <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">
+                              <CheckCircle2 className="h-2.5 w-2.5" />
+                              {item.parsedItems?.length || 0}건 완료
+                            </span>
+                          )}
+                          {item.status === "error" && (
+                            <div className="flex items-center gap-1">
+                              <span className="inline-flex items-center gap-0.5 rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold text-rose-700">
+                                <AlertTriangle className="h-2.5 w-2.5" />
+                                실패
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRetryItem(item.id)}
+                                disabled={isAnalyzing}
+                                className="inline-flex items-center gap-0.5 rounded border border-rose-200 bg-white px-1.5 py-0.5 text-[9px] font-bold text-rose-600 hover:bg-rose-50"
+                              >
+                                <RotateCcw className="h-2.5 w-2.5" />
+                                재시도
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {item.errorMessage && (
+                          <p className="text-[9px] text-rose-600 truncate" title={item.errorMessage}>
+                            {item.errorMessage}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* 삭제 버튼 */}
+                      {!isAnalyzing && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveQueueItem(item.id)}
+                          aria-label="영수증 항목 삭제"
+                          className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* 하단 분석 트리거 버튼 */}
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                  <div className="text-[11px] text-slate-400">
+                    순차 처리 파이프라인으로 Rate Limit을 방지합니다.
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {isAnalyzing ? (
+                      <button
+                        type="button"
+                        onClick={handleAbortBatch}
+                        className="flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        분석 중단
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleAnalyzeImage}
+                        className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        영수증 분석 시작 ({receiptQueue.length}장 순차 처리)
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
             )}
+
             {!savedApiKey.trim() && (
               <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3.5 text-[11px] text-amber-800 leading-relaxed">
                 <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
