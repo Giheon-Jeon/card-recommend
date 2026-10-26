@@ -319,6 +319,21 @@ describe("PortfolioRecommendationView Component", () => {
     expect(copiedText).toContain("신한 마이카페 카드");
     expect(copiedText).toContain("현대 모빌리티 카드");
   });
+
+  it("카드별 월간 혜택 기여도 SVG 누적 바 차트와 세그먼트가 올바르게 렌더링되어야 한다", () => {
+    render(
+      <PortfolioRecommendationView
+        portfolioResult={mockPortfolioResult}
+        categories={mockCategories}
+        myCardIds={[]}
+      />,
+    );
+
+    expect(screen.getByTestId("stacked-bar-chart-container")).toBeInTheDocument();
+    expect(screen.getByTestId("stacked-bar-segment-catalog-101")).toBeInTheDocument();
+    expect(screen.getByTestId("stacked-bar-segment-catalog-102")).toBeInTheDocument();
+    expect(screen.getByTestId("stacked-bar-accessible-table")).toBeInTheDocument();
+  });
 });
 
 

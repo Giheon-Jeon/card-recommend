@@ -31,15 +31,39 @@ describe("SpendingSimulator Component Smoke Test", () => {
     expect(screen.getByText("월 지출 시뮬레이터")).toBeInTheDocument();
 
     // 합계 지출액 렌더링 확인 (120,000 + 350,000 = 470,000원)
-    expect(screen.getByText("470,000원")).toBeInTheDocument();
+    expect(screen.getAllByText("470,000원").length).toBeGreaterThanOrEqual(1);
 
-    // 카테고리 텍스트 확인
-    expect(screen.getByText("대중교통")).toBeInTheDocument();
-    expect(screen.getByText("마트")).toBeInTheDocument();
+    // 카테고리 텍스트 확인 (차트 범례 및 카드 라벨 포함)
+    expect(screen.getAllByText("대중교통").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("마트").length).toBeGreaterThanOrEqual(1);
 
     // 퀵 스텝 5만 버튼 확인
     const quickButtons = screen.getAllByRole("button", { name: "5만" });
     expect(quickButtons.length).toBe(2);
+  });
+
+  it("차트 숨기기/보기 토글 버튼을 클릭하면 도넛 차트 영역이 토글되어야 한다", () => {
+    render(
+      <SpendingSimulator
+        categories={mockCategories}
+        spending={mockSpending}
+        onChange={mockOnChange}
+      />
+    );
+
+    const toggleBtn = screen.getByTestId("toggle-spending-chart-btn");
+    expect(toggleBtn).toHaveTextContent("차트 숨기기");
+    expect(screen.getByTestId("donut-chart-container")).toBeInTheDocument();
+
+    // 토글하여 숨기기
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveTextContent("비중 차트 보기");
+    expect(screen.queryByTestId("donut-chart-container")).not.toBeInTheDocument();
+
+    // 다시 토글하여 보기
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveTextContent("차트 숨기기");
+    expect(screen.getByTestId("donut-chart-container")).toBeInTheDocument();
   });
 
   it("슬라이더(range) 값을 변경할 때 onChange 핸들러가 올바르게 호출되어야 한다", () => {
