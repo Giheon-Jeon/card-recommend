@@ -1,10 +1,13 @@
-import { RotateCcw } from "lucide-react";
+import { useState, useMemo } from "react";
+import { RotateCcw, PieChart } from "lucide-react";
 import type { Category, SpendingProfile } from "@/types/card";
 import { formatWon } from "@/lib/format";
 import { getSliderMax } from "@/lib/spendingProfile";
 import type { SpendingPreset } from "@/lib/spendingPresets";
 import { SpendingPresetSelector } from "@/components/SpendingPresetSelector";
 import { getCategoryExclusionNotice } from "@/lib/cardExclusionParser";
+import { DonutChart, CATEGORY_COLORS } from "@/components/charts";
+import type { ChartDataItem } from "@/components/charts";
 
 interface SpendingSimulatorProps {
   categories: Category[];
@@ -23,7 +26,19 @@ export function SpendingSimulator({
   onReset,
   onApplyPreset,
 }: SpendingSimulatorProps) {
+  const [showChart, setShowChart] = useState(true);
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+
   const total = categories.reduce((sum, c) => sum + (spending[c.id] ?? 0), 0);
+
+  const chartData: ChartDataItem[] = useMemo(() => {
+    return categories.map((c) => ({
+      id: c.id,
+      label: c.label,
+      value: spending[c.id] ?? 0,
+      color: CATEGORY_COLORS[c.id],
+    }));
+  }, [categories, spending]);
 
   const handleResetClick = () => {
     if (typeof window !== "undefined" && typeof window.confirm === "function") {
@@ -53,6 +68,21 @@ export function SpendingSimulator({
                 <span>전체 초기화</span>
               </button>
             )}
+            <button
+              type="button"
+              data-testid="toggle-spending-chart-btn"
+              onClick={() => setShowChart((prev) => !prev)}
+              aria-expanded={showChart}
+              aria-controls="spending-donut-chart-section"
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-800 ${
+                showChart
+                  ? "border-indigo-200 bg-indigo-50/80 text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/60 dark:text-indigo-300"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700/60"
+              }`}
+            >
+              <PieChart className="h-3.5 w-3.5" />
+              <span>{showChart ? "차트 숨기기" : "비중 차트 보기"}</span>
+            </button>
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             카테고리별 예상 월 지출액을 입력하면 추천 결과가 바로 갱신됩니다.
@@ -72,19 +102,45 @@ export function SpendingSimulator({
         />
       )}
 
+      {/* 카테고리별 지출 비중 도넛 차트 */}
+      {showChart && (
+        <div id="spending-donut-chart-section" className="mb-6">
+          <DonutChart
+            data={chartData}
+            title="카테고리별 월 지출 비중"
+            activeId={activeCategoryId}
+            onHoverItem={setActiveCategoryId}
+            className="border border-slate-100 shadow-xs dark:border-slate-800/80"
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((category) => {
           const value = spending[category.id] ?? 0;
           const sliderMax = getSliderMax(value);
           const exclusionNotice = getCategoryExclusionNotice(category.id);
+          const isCategoryActive = activeCategoryId === category.id;
 
           return (
             <div
               key={category.id}
-              className="group rounded-xl border border-slate-200 p-3 transition hover:border-indigo-200 hover:bg-indigo-50/30 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-slate-700 dark:hover:bg-slate-800/70"
+              data-testid={`category-card-${category.id}`}
+              onMouseEnter={() => setActiveCategoryId(category.id)}
+              onMouseLeave={() => setActiveCategoryId(null)}
+              className={`group rounded-xl border p-3 transition ${
+                isCategoryActive
+                  ? "border-indigo-400 ring-2 ring-indigo-300 bg-indigo-50/40 shadow-sm dark:border-indigo-500 dark:ring-indigo-900/60 dark:bg-indigo-950/30"
+                  : "border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/30 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-slate-700 dark:hover:bg-slate-800/70"
+              }`}
             >
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: CATEGORY_COLORS[category.id] ?? "#6366F1" }}
+                    aria-hidden="true"
+                  />
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                     {category.label}
                   </span>
