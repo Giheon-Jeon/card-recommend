@@ -5,6 +5,8 @@ import type { PortfolioResult, PortfolioRecommendation, PortfolioSize } from "@/
 import { useToast } from "@/hooks/useToast";
 import { RecommendationShareButton } from "@/components/RecommendationShareButton";
 import { formatPortfolioRecommendationSummary } from "@/lib/recommendationShare";
+import { StackedBarChart } from "@/components/charts";
+import type { ChartDataItem } from "@/components/charts";
 
 interface PortfolioRecommendationProps {
   portfolioResult: PortfolioResult;
@@ -15,18 +17,21 @@ interface PortfolioRecommendationProps {
 
 const CARD_PALETTE = [
   {
+    hex: "#6366F1",
     bg: "bg-indigo-500",
     text: "text-indigo-600 dark:text-indigo-400",
     badge: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
     bar: "bg-indigo-500",
   },
   {
+    hex: "#8B5CF6",
     bg: "bg-violet-500",
     text: "text-violet-600 dark:text-violet-400",
     badge: "bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border-violet-200 dark:border-violet-800",
     bar: "bg-violet-500",
   },
   {
+    hex: "#10B981",
     bg: "bg-emerald-500",
     text: "text-emerald-600 dark:text-emerald-400",
     badge: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
@@ -45,6 +50,7 @@ export function PortfolioRecommendationView({
 
   // 기본적으로 2장 조합(pair)을 먼저 보여주되, pair가 없고 trio만 있으면 3장 선택
   const [selectedSize, setSelectedSize] = useState<PortfolioSize>(() => (pair ? 2 : 3));
+  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
 
   const activePortfolio: PortfolioRecommendation | null =
     selectedSize === 2 ? pair : trio;
@@ -66,6 +72,24 @@ export function PortfolioRecommendationView({
     const mySet = new Set(myCardIds);
     return cardSourceIds.filter((id) => !mySet.has(id));
   }, [cardSourceIds, myCardIds]);
+
+  const stackedBarData: ChartDataItem[] = useMemo(() => {
+    if (!activePortfolio) return [];
+    return activePortfolio.cardAllocations.map((ca, idx) => {
+      const palette = CARD_PALETTE[idx % CARD_PALETTE.length];
+      const categoryNames = ca.assignedCategories
+        .map((catId) => categories.find((c) => c.id === catId)?.label ?? catId)
+        .join(", ");
+
+      return {
+        id: ca.card.id,
+        label: ca.card.name,
+        value: ca.monthlyBenefit,
+        color: palette.hex,
+        sublabel: `${ca.card.issuer} · 담당: ${categoryNames || "기본 혜택"}`,
+      };
+    });
+  }, [activePortfolio, categories]);
 
   const handleAddAll = () => {
     if (unaddedSourceIds.length === 0) {
@@ -214,74 +238,13 @@ export function PortfolioRecommendationView({
             )}
           </div>
 
-          {/* 카드별 월간 혜택 기여도 분할 바 차트 */}
-          <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
-              <span>카드별 월간 혜택 기여도</span>
-              <span>월 총 혜택 {formatWon(activePortfolio.totalMonthlyBenefit)}</span>
-            </div>
-
-            {/* 분할 바 */}
-            <div
-              className="flex h-3 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
-              aria-hidden="true"
-            >
-              {activePortfolio.cardAllocations.map((ca, idx) => {
-                const percent =
-                  activePortfolio.totalMonthlyBenefit > 0
-                    ? (ca.monthlyBenefit / activePortfolio.totalMonthlyBenefit) * 100
-                    : 100 / activePortfolio.cardAllocations.length;
-                const palette = CARD_PALETTE[idx % CARD_PALETTE.length];
-
-                return (
-                  <div
-                    key={ca.card.id}
-                    style={{ width: `${Math.max(percent, 2)}%` }}
-                    className={`${palette.bar} h-full transition-all duration-300`}
-                    title={`${ca.card.name}: ${formatWon(ca.monthlyBenefit)} (${percent.toFixed(0)}%)`}
-                  />
-                );
-              })}
-            </div>
-
-            {/* 카드별 범례 및 실적 상태 */}
-            <div className="grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2 lg:grid-cols-3">
-              {activePortfolio.cardAllocations.map((ca, idx) => {
-                const palette = CARD_PALETTE[idx % CARD_PALETTE.length];
-                const percent =
-                  activePortfolio.totalMonthlyBenefit > 0
-                    ? Math.round((ca.monthlyBenefit / activePortfolio.totalMonthlyBenefit) * 100)
-                    : 0;
-
-                return (
-                  <div
-                    key={ca.card.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-200/70 bg-white p-2.5 text-xs dark:border-slate-700/80 dark:bg-slate-800/80"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${palette.bg}`} />
-                      <div className="truncate">
-                        <p className="font-bold text-slate-800 dark:text-slate-200 truncate">
-                          {ca.card.name}
-                        </p>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                          {ca.card.issuer} · 할당 지출 {formatWon(ca.allocatedSpend)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-bold text-slate-900 dark:text-slate-100">
-                        {formatWon(ca.monthlyBenefit)}
-                      </p>
-                      <span className="text-[10px] font-medium text-slate-400">
-                        {percent}% 기여
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          {/* 카드별 월간 혜택 기여도 순수 SVG 누적 바 차트 */}
+          <StackedBarChart
+            data={stackedBarData}
+            title="카드별 월간 혜택 기여도"
+            activeId={hoveredCardId}
+            onHoverItem={setHoveredCardId}
+          />
 
           {/* 카테고리별 담당 카드 결제 배분 가이드표 */}
           <div className="space-y-3">
@@ -305,11 +268,18 @@ export function PortfolioRecommendationView({
                       (c) => c.id === assignment.assignedCard.id,
                     );
                     const palette = CARD_PALETTE[cardIndex >= 0 ? cardIndex % CARD_PALETTE.length : 0];
+                    const isCardHovered = hoveredCardId === assignment.assignedCard.id;
 
                     return (
                       <tr
                         key={assignment.category}
-                        className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                        onMouseEnter={() => setHoveredCardId(assignment.assignedCard.id)}
+                        onMouseLeave={() => setHoveredCardId(null)}
+                        className={`transition-colors ${
+                          isCardHovered
+                            ? "bg-indigo-50/70 dark:bg-indigo-950/40"
+                            : "hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
+                        }`}
                       >
                         <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">
                           {categoryLabel(assignment.category)}
