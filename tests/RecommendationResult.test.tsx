@@ -329,4 +329,73 @@ describe("RecommendationResult Component", () => {
     fireEvent.click(screen.getByRole("button", { name: "7,000만원" }));
     expect(salaryBtn).toHaveTextContent("7,000만원");
   });
+
+  it("리포트 인쇄 버튼이 렌더링되고 클릭 시 window.print가 호출되어야 한다", () => {
+    const originalPrint = window.print;
+    const printSpy = vi.fn();
+    window.print = printSpy;
+
+    render(
+      <RecommendationResult
+        ranked={[
+          {
+            card: mockCardA,
+            qualifyingSpend: 400000,
+            meetsMinimum: true,
+            tierIndex: 0,
+            breakdown: [],
+            totalMonthlyBenefit: 10000,
+            netMonthlyBenefit: 9000,
+          },
+        ]}
+        categoryWinners={[]}
+        categories={mockCategories}
+        monthlySpend={1200000}
+      />,
+    );
+
+    const printBtn = screen.getByTestId("recommendation-print-btn");
+    expect(printBtn).toBeInTheDocument();
+    expect(printBtn).toHaveAttribute("aria-label", "추천 분석 리포트 인쇄 및 PDF 저장");
+    expect(printBtn).toHaveTextContent("리포트 인쇄");
+
+    fireEvent.click(printBtn);
+    expect(printSpy).toHaveBeenCalledTimes(1);
+
+    window.print = originalPrint;
+  });
+
+  it("추천 분석 리포트에 인쇄 전용 헤더와 푸터 서식이 포함되어야 한다", () => {
+    render(
+      <RecommendationResult
+        ranked={[
+          {
+            card: mockCardA,
+            qualifyingSpend: 400000,
+            meetsMinimum: true,
+            tierIndex: 0,
+            breakdown: [],
+            totalMonthlyBenefit: 10000,
+            netMonthlyBenefit: 9000,
+          },
+        ]}
+        categoryWinners={[]}
+        categories={mockCategories}
+        monthlySpend={1200000}
+      />,
+    );
+
+    // 인쇄 전용 헤더
+    const printTitle = screen.getByRole("heading", { level: 1, name: "카드 혜택 추천 분석 리포트" });
+    expect(printTitle).toBeInTheDocument();
+    expect(printTitle.closest(".print-only")).toBeInTheDocument();
+    expect(screen.getByText(/분석 기준 월 지출: 1,200,000원/)).toBeInTheDocument();
+    expect(screen.getByText("단일 최적 카드 추천 결과")).toBeInTheDocument();
+
+    // 인쇄 전용 푸터
+    expect(
+      screen.getByText(/본 추천 분석 리포트는 입력된 소비 패턴을 바탕으로 산출된 모의 분석 결과이며/),
+    ).toBeInTheDocument();
+  });
 });
+
