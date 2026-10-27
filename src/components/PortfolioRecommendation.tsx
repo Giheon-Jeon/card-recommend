@@ -125,7 +125,7 @@ export function PortfolioRecommendationView({
         </div>
 
         {/* 조합 크기 선택 탭 (2장 vs 3장) & 공유 버튼 */}
-        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+        <div className="no-print flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
           <div
             role="tablist"
             aria-label="포트폴리오 조합 장수 선택"
@@ -217,7 +217,7 @@ export function PortfolioRecommendationView({
                 type="button"
                 onClick={handleAddAll}
                 disabled={unaddedSourceIds.length === 0}
-                className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition shadow-sm ${
+                className={`no-print inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition shadow-sm ${
                   unaddedSourceIds.length > 0
                     ? "bg-indigo-600 text-white hover:bg-indigo-500 active:scale-95"
                     : "bg-white/10 text-slate-400 cursor-not-allowed"
