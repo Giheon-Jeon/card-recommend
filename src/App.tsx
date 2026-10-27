@@ -36,7 +36,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
-      <div className="border-b border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
+      <div className="no-print border-b border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6">
           <header className="flex items-start justify-between gap-4">
             <div>

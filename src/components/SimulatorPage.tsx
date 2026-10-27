@@ -124,7 +124,7 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
         </div>
       ) : (
         <>
-          <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 text-sm text-indigo-800">
+          <div className="no-print rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 text-sm text-indigo-800">
             {scope === "myCards" ? (
               <>
                 ✨ 내가 담은 <strong>{myCards.ids.length}개 카드</strong>의 혜택 정보가 시뮬레이션용으로 분석/반영되었습니다.
@@ -136,12 +136,14 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
               </>
             )}
           </div>
-          <ErrorBoundary
-            fallbackTitle="지출 내역 가져오기 오류"
-            fallbackMessage="지출 내역 가져오기 컴포넌트를 불러오는 중 오류가 발생했습니다. 다시 시도해 주세요."
-          >
-            <SpendingImporter categories={categories} onImport={applyImportedItems} />
-          </ErrorBoundary>
+          <div className="no-print">
+            <ErrorBoundary
+              fallbackTitle="지출 내역 가져오기 오류"
+              fallbackMessage="지출 내역 가져오기 컴포넌트를 불러오는 중 오류가 발생했습니다. 다시 시도해 주세요."
+            >
+              <SpendingImporter categories={categories} onImport={applyImportedItems} />
+            </ErrorBoundary>
+          </div>
           <SpendingSimulator
             categories={categories}
             spending={spending}
@@ -158,12 +160,14 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
             onAddCards={handleAddPortfolioCards}
             monthlySpend={Object.values(spending).reduce((sum, v) => sum + (v || 0), 0)}
           />
-          <CardList
-            evaluations={rankedForDisplay}
-            cardTypes={cardTypes}
-            categories={categories}
-            onToggleCardType={toggleCardType}
-          />
+          <div className="no-print">
+            <CardList
+              evaluations={rankedForDisplay}
+              cardTypes={cardTypes}
+              categories={categories}
+              onToggleCardType={toggleCardType}
+            />
+          </div>
         </>
       )}
     </div>

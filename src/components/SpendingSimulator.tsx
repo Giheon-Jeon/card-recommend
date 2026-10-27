@@ -61,7 +61,7 @@ export function SpendingSimulator({
               <button
                 type="button"
                 onClick={handleResetClick}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition hover:border-rose-200 hover:bg-rose-50/50 hover:text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-rose-800/80 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
+                className="no-print inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition hover:border-rose-200 hover:bg-rose-50/50 hover:text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-rose-800/80 dark:hover:bg-rose-950/40 dark:hover:text-rose-300 cursor-pointer"
                 title="모든 지출 입력값 0원으로 초기화"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -74,7 +74,7 @@ export function SpendingSimulator({
               onClick={() => setShowChart((prev) => !prev)}
               aria-expanded={showChart}
               aria-controls="spending-donut-chart-section"
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-800 ${
+              className={`no-print inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-800 cursor-pointer ${
                 showChart
                   ? "border-indigo-200 bg-indigo-50/80 text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/60 dark:text-indigo-300"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700/60"
@@ -95,11 +95,13 @@ export function SpendingSimulator({
       </div>
 
       {onApplyPreset && (
-        <SpendingPresetSelector
-          categories={categories}
-          spending={spending}
-          onApplyPreset={onApplyPreset}
-        />
+        <div className="no-print">
+          <SpendingPresetSelector
+            categories={categories}
+            spending={spending}
+            onApplyPreset={onApplyPreset}
+          />
+        </div>
       )}
 
       {/* 카테고리별 지출 비중 도넛 차트 */}
@@ -170,9 +172,9 @@ export function SpendingSimulator({
                 value={value}
                 aria-label={`${category.label} 지출 슬라이더`}
                 onChange={(e) => onChange(category.id, Number(e.target.value))}
-                className="w-full accent-indigo-600 dark:accent-indigo-500"
+                className="no-print w-full accent-indigo-600 dark:accent-indigo-500"
               />
-              <div className="mt-2 flex items-center gap-2">
+              <div className="no-print mt-2 flex items-center gap-2">
                 <input
                   type="number"
                   min={0}
@@ -183,7 +185,7 @@ export function SpendingSimulator({
                   className="w-full rounded-md border border-slate-200 px-2 py-1 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-950"
                 />
               </div>
-              <div className="mt-2 flex flex-wrap gap-1">
+              <div className="no-print mt-2 flex flex-wrap gap-1">
                 {QUICK_STEPS.map((step) => (
                   <button
                     key={step}
