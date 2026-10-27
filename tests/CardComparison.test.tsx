@@ -358,4 +358,53 @@ describe("CardComparisonModal Component", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
+
+  it("비교 모달 내 인쇄/PDF 버튼 클릭 시 window.print가 호출되어야 한다", () => {
+    const originalPrint = window.print;
+    const printSpy = vi.fn();
+    window.print = printSpy;
+
+    render(
+      <CardComparisonModal
+        isOpen={true}
+        cards={[mockCard1, mockCard2]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const headerPrintBtn = screen.getByTestId("print-comparison-btn");
+    expect(headerPrintBtn).toBeInTheDocument();
+    expect(headerPrintBtn).toHaveAttribute("aria-label", "카드 비교표 인쇄 및 PDF 저장");
+    fireEvent.click(headerPrintBtn);
+    expect(printSpy).toHaveBeenCalledTimes(1);
+
+    const footerPrintBtn = screen.getByTestId("print-comparison-footer-btn");
+    expect(footerPrintBtn).toBeInTheDocument();
+    fireEvent.click(footerPrintBtn);
+    expect(printSpy).toHaveBeenCalledTimes(2);
+
+    window.print = originalPrint;
+  });
+
+  it("카드 비교 모달에 인쇄 전용 헤더와 푸터가 올바르게 구성되어야 한다", () => {
+    render(
+      <CardComparisonModal
+        isOpen={true}
+        cards={[mockCard1, mockCard2]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // 인쇄 전용 헤더
+    const printTitle = screen.getByRole("heading", { level: 1, name: "관심 카드 혜택 및 연회비 비교 분석표" });
+    expect(printTitle).toBeInTheDocument();
+    expect(printTitle.closest(".print-only")).toBeInTheDocument();
+    expect(screen.getByText("비교 대상: 총 2종 카드")).toBeInTheDocument();
+
+    // 인쇄 전용 푸터
+    expect(
+      screen.getByText(/본 비교표는 공식 상품공시실 기준 정보를 바탕으로 작성되었습니다/),
+    ).toBeInTheDocument();
+  });
 });
+

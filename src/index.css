@@ -51,3 +51,118 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* ==========================================================================
+   Print & PDF Export Media Query Styles
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 10mm 12mm 10mm;
+  }
+
+  /* 배경색 및 폰트 그래픽 유지 (브라우저 기본 배경 인쇄 허용) */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* 본문 기본 스타일 초기화 */
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+    overflow: visible !important;
+  }
+
+  /* 인쇄 시 불필요한 네비게이션, 슬라이더, 토글, 액션 버튼 일괄 숨김 */
+  .no-print,
+  nav,
+  input[type="range"],
+  [role="switch"],
+  [data-no-print="true"],
+  .theme-toggle,
+  [aria-label="테마 전환"] {
+    display: none !important;
+  }
+
+  /* 인쇄 전용 헤더 및 푸터 표시 */
+  .print-only {
+    display: block !important;
+  }
+
+  .print-only-inline {
+    display: inline-block !important;
+  }
+
+  .print-only-flex {
+    display: flex !important;
+  }
+
+  /* 대화상자(Modal Dialog) 인쇄 시 고정 레이아웃 해제 */
+  dialog[open] {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  dialog[open] > .fixed,
+  dialog[open] button[aria-label="대화상자 닫기"] {
+    display: none !important;
+  }
+
+  dialog[open] > div {
+    max-height: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  /* 스크롤 영역 인쇄 시 전체 펼침 */
+  .overflow-x-auto,
+  .overflow-y-auto {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* 페이지 나눔 방지 (테이블 행, 섹션, 카드) */
+  table,
+  tr,
+  td,
+  th,
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* 링크 URL 강제 표시 제거 */
+  a[href]::after {
+    content: "" !important;
+  }
+}
+
+/* 일반 화면(Screen)에서는 print-only 요소 숨김 */
+@media screen {
+  .print-only,
+  .print-only-inline,
+  .print-only-flex {
+    display: none !important;
+  }
+}
+

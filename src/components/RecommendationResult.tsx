@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Printer } from "lucide-react";
 import { formatWon } from "@/lib/format";
 import type { Category } from "@/types/card";
 import type { CardEvaluation, CategoryWinner } from "@/types/recommendation";
@@ -75,8 +76,34 @@ export function RecommendationResult({
       aria-label="추천 결과 섹션"
       className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 transition-colors"
     >
-      {/* 탭 헤더 */}
-      <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+      {/* 인쇄 전용 헤더 서식 */}
+      <div className="print-only mb-6 border-b-2 border-indigo-600 pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700">
+              {activeTab === "portfolio" ? "다중 카드 포트폴리오 분석 결과" : "단일 최적 카드 추천 결과"}
+            </span>
+            <h1 className="mt-1 text-xl font-bold text-slate-900">
+              카드 혜택 추천 분석 리포트
+            </h1>
+            <p className="mt-0.5 text-xs text-slate-600">
+              사용자 월간 소비 패턴 기반 AI 최적 혜택 분석 결과서
+            </p>
+          </div>
+          <div className="text-right text-xs text-slate-500">
+            <div>출력일시: {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+            <div>분석 기준 월 지출: {formatWon(actualMonthlySpend)}</div>
+            {includeTaxSavings && (
+              <div className="text-indigo-600 font-medium">
+                연간 총급여 {Math.round(annualSalary / 10000).toLocaleString()}만원 절세 합산
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 탭 헤더 (화면 전용) */}
+      <div className="no-print mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">추천 결과</h2>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
@@ -137,13 +164,28 @@ export function RecommendationResult({
               testId="recommendation-header-share-btn"
             />
           )}
+
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined" && typeof window.print === "function") {
+                window.print();
+              }
+            }}
+            data-testid="recommendation-print-btn"
+            aria-label="추천 분석 리포트 인쇄 및 PDF 저장"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/80 cursor-pointer"
+          >
+            <Printer className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+            <span>리포트 인쇄</span>
+          </button>
         </div>
       </div>
 
       {/* 소득공제 절세 옵션 컨트롤 바 */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-slate-50 px-4 py-2.5 dark:bg-slate-800/60 text-xs">
+      <div className={`mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-slate-50 px-4 py-2.5 dark:bg-slate-800/60 text-xs ${!includeTaxSavings ? "no-print" : ""}`}>
         <div className="flex items-center gap-2">
-          <label className="relative inline-flex cursor-pointer items-center">
+          <label className="no-print relative inline-flex cursor-pointer items-center">
             <input
               type="checkbox"
               role="switch"
@@ -167,13 +209,16 @@ export function RecommendationResult({
         {includeTaxSavings && (
           <div className="relative flex items-center gap-1.5">
             <span className="text-slate-500 dark:text-slate-400">기준 연봉:</span>
+            <span className="print-only font-bold text-slate-800 dark:text-slate-200">
+              {Math.round(annualSalary / 10000).toLocaleString()}만원
+            </span>
             <button
               type="button"
               data-testid="salary-setting-btn"
               onClick={() => setShowSalaryPopover(!showSalaryPopover)}
               aria-expanded={showSalaryPopover}
               aria-label="연봉 설정 변경"
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-bold text-slate-800 shadow-xs hover:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 transition"
+              className="no-print rounded-lg border border-slate-200 bg-white px-2 py-1 font-bold text-slate-800 shadow-xs hover:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 transition"
             >
               {Math.round(annualSalary / 10000).toLocaleString()}만원 ✎
             </button>
@@ -392,6 +437,10 @@ export function RecommendationResult({
           />
         )
       )}
+      {/* 인쇄 전용 푸터 서식 */}
+      <div className="print-only mt-8 border-t border-slate-200 pt-3 text-center text-[10px] text-slate-500">
+        카드 혜택 트래커 (Card Benefit Tracker) | 본 추천 분석 리포트는 입력된 소비 패턴을 바탕으로 산출된 모의 분석 결과이며, 실제 청구 할인 및 적립 금액은 카드사별 실적 인정 기준에 따라 차이가 있을 수 있습니다.
+      </div>
     </section>
   );
 }
