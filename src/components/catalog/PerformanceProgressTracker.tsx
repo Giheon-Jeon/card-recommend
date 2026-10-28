@@ -4,12 +4,24 @@ import {
   calculatePerformanceProgress,
   type PerformanceProgress,
 } from "@/lib/performanceTracker";
+import {
+  getPerformanceDdayInfo,
+  type PerformanceDdayInfo,
+} from "@/lib/performanceDday";
+import type { Card } from "@/types/card";
+import type { CatalogEntry } from "@/types/catalog";
 
 interface PerformanceProgressTrackerProps {
   currentSpend: number;
   tiers: number[];
   cardName?: string;
   compact?: boolean;
+  /** 해당 카드의 CatalogEntry 또는 Card 정보 (소비 추천 팁 산출용) */
+  card?: Card | CatalogEntry;
+  /** D-Day 산출 기준 일자 (테스트 및 모의 확인용) */
+  currentDate?: Date | string | number;
+  /** D-Day 및 부족 실적 소비 가이드 표시 여부 (기본값 true) */
+  showDdayGuide?: boolean;
 }
 
 export function PerformanceProgressTracker({
@@ -17,10 +29,22 @@ export function PerformanceProgressTracker({
   tiers,
   cardName = "카드",
   compact = false,
+  card,
+  currentDate,
+  showDdayGuide = true,
 }: PerformanceProgressTrackerProps) {
   const progress: PerformanceProgress = useMemo(() => {
     return calculatePerformanceProgress(currentSpend, tiers);
   }, [currentSpend, tiers]);
+
+  // 마감 D-Day 및 소비 추천 정보 산출
+  const ddayInfo: PerformanceDdayInfo = useMemo(() => {
+    return getPerformanceDdayInfo(
+      progress.remainingToNextTier,
+      card,
+      currentDate,
+    );
+  }, [progress.remainingToNextTier, card, currentDate]);
 
   // 상태별 뱃지 스타일 및 진행바 색상 매핑
   const badgeStyle = useMemo(() => {
@@ -64,13 +88,19 @@ export function PerformanceProgressTracker({
     return `최소 실적까지 ${formatWon(progress.remainingToNextTier)} 남음`;
   }, [progress.status, progress.remainingToNextTier]);
 
+  // 실적 조건이 존재하고 다음 실적 구간까지 남은 금액이 있을 때 D-Day 가이드 활성화
+  const hasRemainingSpend =
+    progress.status !== "none" &&
+    progress.status !== "max" &&
+    progress.remainingToNextTier > 0;
+
   return (
     <div
       data-testid="performance-progress-tracker"
       className="flex flex-col gap-2 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-800/80 text-xs"
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span className="font-semibold text-slate-700 dark:text-slate-300">
             실적 달성 현황
           </span>
@@ -80,6 +110,20 @@ export function PerformanceProgressTracker({
           >
             {progress.statusLabel}
           </span>
+
+          {/* D-Day 카운트다운 뱃지: 실적 채우기가 필요한 경우 표시 */}
+          {hasRemainingSpend && (
+            <span
+              data-testid="performance-dday-badge"
+              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${
+                ddayInfo.isMonthEndUrgent
+                  ? "bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 animate-pulse"
+                  : "bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+              }`}
+            >
+              {ddayInfo.dDayLabel}
+            </span>
+          )}
         </div>
         <div className="text-right">
           <span className="font-semibold text-slate-900 dark:text-slate-100">
@@ -142,6 +186,44 @@ export function PerformanceProgressTracker({
           {progress.status === "none" ? "100%" : `${progress.progressPercent}%`}
         </span>
       </div>
+
+      {/* 당월 잔여 일수 기준 일평균 권장 소비액 하이라이트 */}
+      {!compact && showDdayGuide && hasRemainingSpend && (
+        <div
+          data-testid="performance-daily-spend-highlight"
+          className="flex items-center justify-between rounded-lg bg-amber-500/10 dark:bg-amber-500/15 px-2.5 py-1.5 text-[11px] text-amber-900 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/40"
+        >
+          <span className="font-medium text-amber-800 dark:text-amber-300">
+            {ddayInfo.dDay === 0
+              ? "말일 오늘 마감"
+              : `마감까지 ${ddayInfo.daysRemaining}일간 일평균`}
+          </span>
+          <span className="font-bold text-amber-900 dark:text-amber-100">
+            약 {formatWon(ddayInfo.dailyRecommendedSpend)} 소비 권장
+          </span>
+        </div>
+      )}
+
+      {/* 실적 채우기 최고 혜택 카테고리 소비 추천 팁 가이드 */}
+      {!compact && showDdayGuide && hasRemainingSpend && ddayInfo.recommendedTip && (
+        <div
+          data-testid="spending-recommendation-tip"
+          className="flex items-start gap-1.5 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 p-2 border border-indigo-100 dark:border-indigo-900/40 text-[11px] leading-relaxed text-indigo-950 dark:text-indigo-200"
+        >
+          <span
+            className="text-indigo-600 dark:text-indigo-400 shrink-0 text-xs select-none"
+            aria-hidden="true"
+          >
+            💡
+          </span>
+          <div className="flex-1">
+            <span className="font-semibold text-indigo-700 dark:text-indigo-300">
+              실적 채우기 팁:{" "}
+            </span>
+            <span>{ddayInfo.recommendedTip.tipMessage}</span>
+          </div>
+        </div>
+      )}
 
       {/* 구간별 기준 체크포인트 안내 (compact 모드가 아니고 구간이 있는 경우 표시) */}
       {!compact && progress.tiers.length > 0 && (

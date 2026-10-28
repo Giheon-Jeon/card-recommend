@@ -436,6 +436,7 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
                       currentSpend={spend}
                       tiers={tiers}
                       cardName={entry.name}
+                      card={entry}
                     />
                   </div>
 
