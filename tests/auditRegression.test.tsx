@@ -163,6 +163,7 @@ describe("[감사] 내 카드 백업 검증", () => {
 
 describe("[감사] 클립보드 복사 fallback", () => {
   it("clipboard API가 없고 execCommand가 예외를 던지면 false를 반환한다", async () => {
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
     Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true, writable: true });
     const original = document.execCommand;
     document.execCommand = vi.fn(() => {
@@ -172,6 +173,11 @@ describe("[감사] 클립보드 복사 fallback", () => {
       await expect(copyTextToClipboard("x")).resolves.toBe(false);
     } finally {
       document.execCommand = original;
+      if (originalClipboard) {
+        Object.defineProperty(navigator, "clipboard", originalClipboard);
+      } else {
+        delete (navigator as any).clipboard;
+      }
     }
   });
 });
