@@ -1,6 +1,6 @@
 # CA 감사 보고서 (코드·보안·공급망·CI)
 
-- 기준: `main@4ea331e` (작업 브랜치 `Giheon-Jeon/fireworm`), 2026-10-28
+- 기준: `main@4ea331e` (작업 브랜치 `Giheon-Jeon/chore-ca-qa-audit`), 2026-10-28
 - 범위: `src/**`, `data/**`, `package.json`, `package-lock.json`, `vite.config.ts`, `.github/**` (읽기 전용)
 - 이 보고서 외 파일은 수정하지 않았다. 재현 테스트는 `docs/audit/qa-report.md`에 있다.
 

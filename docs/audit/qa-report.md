@@ -1,6 +1,6 @@
 # QA 감사 보고서 (동작 검증·회귀 테스트)
 
-- 기준: `main@4ea331e` (작업 브랜치 `Giheon-Jeon/fireworm`), 2026-10-28
+- 기준: `main@4ea331e` (작업 브랜치 `Giheon-Jeon/chore-ca-qa-audit`), 2026-10-28
 - 추가한 파일: `tests/auditRegression.test.tsx` (20개 케이스, 모두 통과)
 - 이 보고서의 재현 코드는 **현재 실패하는 기대값**이다. 규칙에 따라 커밋하지 않았고, skip/todo/fails로 우회하지도 않았다. 수정 PR에서 `tests/`에 추가하면 회귀 테스트가 된다.
 - "실측"이라고 적은 값은 임시 프로브 테스트(`tests/_probe*.test.ts`, 실행 후 삭제)로 얻은 실제 출력이다. "코드 분석"이라고 적은 항목은 실행으로 재현하지 않았다.
