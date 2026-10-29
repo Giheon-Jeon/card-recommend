@@ -4,6 +4,10 @@ import {
   useMyCards,
   exportMyCards,
   parseAndValidateMyCardsBackup,
+  migrateMyCardsData,
+  normalizeIssuedMonth,
+  normalizeAnnualFeeMonth,
+  normalizeExpiryDate,
 } from "@/lib/myCards";
 
 const STORAGE_KEY = "card-recommend:my-cards";
@@ -140,6 +144,95 @@ describe("useMyCards", () => {
     expect(result.current.ids).toEqual([]);
     expect(localStorage.getItem(STORAGE_KEY)).toBe("[]");
   });
+
+  it("updateCardMeta 호출 시 발급월, 연회비 청구월, 유효기간이 저장되고 발급월 입력 시 청구월이 자동 추론되어야 한다", () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([1, 2]));
+    const { result } = renderHook(() => useMyCards());
+
+    act(() => {
+      result.current.updateCardMeta(1, {
+        issuedMonth: "2024-11",
+        expiryDate: "11/29",
+      });
+    });
+
+    expect(result.current.getCardMeta(1)).toEqual({
+      issuedMonth: "2024-11",
+      annualFeeMonth: 11,
+      expiryDate: "11/29",
+    });
+
+    expect(result.current.items).toEqual([
+      {
+        sourceId: 1,
+        issuedMonth: "2024-11",
+        annualFeeMonth: 11,
+        expiryDate: "11/29",
+      },
+      { sourceId: 2 },
+    ]);
+  });
+
+  it("레거시 number[] 및 MyCardItem[] 혼용 저장소 데이터를 하위 호환하여 마이그레이션해야 한다", () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        1,
+        {
+          sourceId: 2,
+          issuedMonth: "2025-03",
+          annualFeeMonth: 3,
+          expiryDate: "2030-03",
+        },
+      ]),
+    );
+
+    const { result } = renderHook(() => useMyCards());
+    expect(result.current.ids).toEqual([1, 2]);
+    expect(result.current.getCardMeta(2)).toEqual({
+      issuedMonth: "2025-03",
+      annualFeeMonth: 3,
+      expiryDate: "03/30",
+    });
+  });
+});
+
+describe("MyCardItem Schema Normalization & Migration", () => {
+  it("normalizeIssuedMonth는 유효한 YYYY-MM 형식을 정규화하고 잘못된 입력을 거부해야 한다", () => {
+    expect(normalizeIssuedMonth("2024-5")).toBe("2024-05");
+    expect(normalizeIssuedMonth("2024.11")).toBe("2024-11");
+    expect(normalizeIssuedMonth("2024-13")).toBeUndefined();
+    expect(normalizeIssuedMonth("")).toBeUndefined();
+  });
+
+  it("normalizeAnnualFeeMonth는 1~12월 정수를 정규화하고 범위 밖 값을 거부해야 한다", () => {
+    expect(normalizeAnnualFeeMonth(5)).toBe(5);
+    expect(normalizeAnnualFeeMonth("12")).toBe(12);
+    expect(normalizeAnnualFeeMonth(0)).toBeUndefined();
+    expect(normalizeAnnualFeeMonth(13)).toBeUndefined();
+  });
+
+  it("normalizeExpiryDate는 다양한 유효기간 표기(MM/YY, YYYY-MM, MMYY)를 MM/YY로 정규화해야 한다", () => {
+    expect(normalizeExpiryDate("5/29")).toBe("05/29");
+    expect(normalizeExpiryDate("2029-05")).toBe("05/29");
+    expect(normalizeExpiryDate("0529")).toBe("05/29");
+    expect(normalizeExpiryDate("13/29")).toBeUndefined();
+  });
+
+  it("migrateMyCardsData는 레거시 숫자 배열과 메타데이터 맵을 병합해야 한다", () => {
+    const migrated = migrateMyCardsData([10, 20], {
+      "10": { issuedMonth: "2023-08", annualFeeMonth: 8, expiryDate: "08/28" },
+    });
+    expect(migrated).toEqual([
+      {
+        sourceId: 10,
+        issuedMonth: "2023-08",
+        annualFeeMonth: 8,
+        expiryDate: "08/28",
+      },
+      { sourceId: 20 },
+    ]);
+  });
 });
 
 describe("MyCards Backup and Validation", () => {
@@ -166,6 +259,36 @@ describe("MyCards Backup and Validation", () => {
     if (result.success) {
       expect(result.cardIds).toEqual([101, 102, 103]);
       expect(result.count).toBe(3);
+    }
+  });
+
+  it("메타데이터 items가 포함된 백업 JSON도 정상 파싱하고 마이그레이션해야 한다", () => {
+    const raw = exportMyCards(
+      [101, 102],
+      [
+        {
+          sourceId: 101,
+          issuedMonth: "2024-11",
+          annualFeeMonth: 11,
+          expiryDate: "11/29",
+        },
+        { sourceId: 102 },
+      ],
+    );
+
+    const result = parseAndValidateMyCardsBackup(raw);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.cardIds).toEqual([101, 102]);
+      expect(result.items).toEqual([
+        {
+          sourceId: 101,
+          issuedMonth: "2024-11",
+          annualFeeMonth: 11,
+          expiryDate: "11/29",
+        },
+        { sourceId: 102 },
+      ]);
     }
   });
 

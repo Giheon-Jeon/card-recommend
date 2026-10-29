@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import axe from "axe-core";
 import { MyCardsPage } from "@/components/catalog/MyCardsPage";
 import { ToastProvider } from "@/contexts/ToastContext";
 import * as myCardsModule from "@/lib/myCards";
@@ -272,5 +273,61 @@ describe("MyCardsPage Component", () => {
     const status = screen.getByRole("status");
     expect(status).toBeInTheDocument();
   });
-});
 
+  it("내 카드 타일에서 발급월/청구월/유효기간 인라인 입력 시 청구 임박(D-30 이내) 경고 뱃지와 알림이 표시되어야 한다", () => {
+    // 기준일: 2026-10-29 -> 11월 청구 설정 시 D-3 임박
+    render(
+      <ToastProvider>
+        <MyCardsPage myCards={mockMyCards} currentDate={new Date(2026, 9, 29)} />
+      </ToastProvider>
+    );
+
+    const issuedInput = screen.getByTestId("issued-month-input-1") as HTMLInputElement;
+    fireEvent.change(issuedInput, { target: { value: "2024-11" } });
+
+    // 발급월 2024-11 입력으로 청구월이 11월로 자동 설정되어 D-3 경고 뱃지 노출
+    const urgentBadge = screen.getByTestId("annual-fee-urgent-badge");
+    expect(urgentBadge).toHaveTextContent("연회비 청구 D-3 (11월)");
+    expect(screen.getByTestId("annual-fee-urgent-alert")).toHaveTextContent("3일 남았습니다");
+    expect(screen.getByTestId("overview-urgent-fee-count")).toHaveTextContent("연회비 청구 임박 1장");
+
+    // 유효기간 입력 검증
+    const expiryInput = screen.getByTestId("expiry-date-input-1") as HTMLInputElement;
+    fireEvent.change(expiryInput, { target: { value: "11/29" } });
+    fireEvent.blur(expiryInput);
+
+    expect(screen.getByTestId("card-expiry-badge")).toHaveTextContent("유효기간 11/29");
+  });
+
+  it("월 지출액에 따라 갱신/해지 의사결정 보조 위젯이 '유지 권장'과 '해지/교체 검토'로 전환되어야 한다", () => {
+    render(
+      <ToastProvider>
+        <MyCardsPage myCards={mockMyCards} currentDate={new Date(2026, 9, 29)} />
+      </ToastProvider>
+    );
+
+    // 기본 월 지출액 50만원에서는 혜택이 연회비를 초과하여 '유지 권장' 표시
+    const badgesBefore = screen.getAllByTestId("renewal-decision-badge");
+    expect(badgesBefore[0]).toHaveTextContent("유지 권장");
+
+    // 월 지출액을 0원으로 변경하면 실적 미달로 '해지/교체 검토'로 전환
+    const spendInput = screen.getByLabelText("이번 달 월 지출액 입력");
+    fireEvent.change(spendInput, { target: { value: "0" } });
+
+    const badgesAfter = screen.getAllByTestId("renewal-decision-badge");
+    expect(badgesAfter[0]).toHaveTextContent("해지/교체 검토");
+  });
+
+  it("인라인 입력 폼과 갱신/해지 위젯이 포함된 상태에서 WCAG 접근성 위반이 없어야 한다", async () => {
+    const { container } = render(
+      <ToastProvider>
+        <MyCardsPage myCards={mockMyCards} currentDate={new Date(2026, 9, 29)} />
+      </ToastProvider>
+    );
+
+    const results = await axe.run(container, {
+      rules: { "color-contrast": { enabled: false } },
+    });
+    expect(results.violations).toEqual([]);
+  });
+});
