@@ -1,24 +1,92 @@
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import type { CatalogEntry } from "@/types/catalog";
-import { useMyCards, downloadMyCardsBackup, parseAndValidateMyCardsBackup } from "@/lib/myCards";
+import {
+  useMyCards,
+  downloadMyCardsBackup,
+  parseAndValidateMyCardsBackup,
+  sanitizeCardMeta,
+  normalizeIssuedMonth,
+  type MyCardMeta,
+} from "@/lib/myCards";
 import { catalogCards, categories } from "@/lib/loadCatalog";
 import { formatWon } from "@/lib/format";
 import { CardDetailModal } from "@/components/catalog/CardDetailModal";
 import { PerformanceProgressTracker } from "@/components/catalog/PerformanceProgressTracker";
 import { getCardPerformanceTiers, calculatePerformanceProgress } from "@/lib/performanceTracker";
+import {
+  evaluateCardRenewalDecision,
+  type CardRenewalEvaluation,
+} from "@/lib/annualFeeTracker";
 import { readStoredSpending } from "@/lib/spendingProfile";
 import { useToast } from "@/hooks/useToast";
 
 interface MyCardsPageProps {
-  myCards: ReturnType<typeof useMyCards>;
+  myCards: ReturnType<typeof useMyCards> | {
+    ids: number[];
+    add: (id: number) => void;
+    remove: (id: number) => void;
+    toggle: (id: number) => void;
+    has: (id: number) => boolean;
+    importIds: (ids: number[], mode?: "merge" | "overwrite", items?: unknown[]) => number;
+    clear: () => void;
+    items?: ReturnType<typeof useMyCards>["items"];
+    getCardMeta?: ReturnType<typeof useMyCards>["getCardMeta"];
+    updateCardMeta?: ReturnType<typeof useMyCards>["updateCardMeta"];
+  };
+  /** D-Day 산출 기준 일자 (테스트 및 시뮬레이션용) */
+  currentDate?: Date | string | number;
 }
 
-export function MyCardsPage({ myCards }: MyCardsPageProps) {
+export function MyCardsPage({ myCards, currentDate }: MyCardsPageProps) {
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importMode, setImportMode] = useState<"merge" | "overwrite">("merge");
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 테스트용 부분 모킹 객체가 전달된 경우에도 동작하도록 로컬 메타 상태 폴백 지원
+  const [fallbackMetaMap, setFallbackMetaMap] = useState<Record<number, MyCardMeta>>({});
+
+  const getMeta = useCallback(
+    (sourceId: number): MyCardMeta => {
+      if (typeof myCards.getCardMeta === "function") {
+        return myCards.getCardMeta(sourceId);
+      }
+      return fallbackMetaMap[sourceId] ?? {};
+    },
+    [myCards, fallbackMetaMap],
+  );
+
+  const handleUpdateMeta = useCallback(
+    (sourceId: number, patch: Partial<MyCardMeta>) => {
+      if (typeof myCards.updateCardMeta === "function") {
+        myCards.updateCardMeta(sourceId, patch);
+        return;
+      }
+      setFallbackMetaMap((prev) => {
+        const current = prev[sourceId] ?? {};
+        const merged: Partial<MyCardMeta> = { ...current, ...patch };
+        if (
+          patch.issuedMonth !== undefined &&
+          !("annualFeeMonth" in patch) &&
+          current.annualFeeMonth === undefined
+        ) {
+          const normalizedIssued = normalizeIssuedMonth(patch.issuedMonth);
+          if (normalizedIssued) {
+            const monthPart = parseInt(normalizedIssued.split("-")[1], 10);
+            if (monthPart >= 1 && monthPart <= 12) {
+              merged.annualFeeMonth = monthPart;
+            }
+          }
+        }
+        return {
+          ...prev,
+          [sourceId]: sanitizeCardMeta(merged),
+        };
+      });
+    },
+    [myCards],
+  );
 
   useEffect(() => {
     if (!isImportModalOpen) return;
@@ -70,6 +138,8 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
         tiers: number[];
         spend: number;
         progress: ReturnType<typeof calculatePerformanceProgress>;
+        renewal: CardRenewalEvaluation;
+        meta: MyCardMeta;
       }
     >();
 
@@ -77,18 +147,28 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
       const tiers = getCardPerformanceTiers(entry);
       const spend = cardSpends[entry.sourceId] ?? globalSpend;
       const progress = calculatePerformanceProgress(spend, tiers);
-      map.set(entry.sourceId, { tiers, spend, progress });
+      const meta = getMeta(entry.sourceId);
+      const renewal = evaluateCardRenewalDecision({
+        entry,
+        monthlySpend: spend,
+        meta,
+        currentDate,
+      });
+      map.set(entry.sourceId, { tiers, spend, progress, renewal, meta });
     }
     return map;
-  }, [entries, cardSpends, globalSpend]);
+  }, [entries, cardSpends, globalSpend, getMeta, currentDate]);
 
   const performanceOverview = useMemo(() => {
     let metCount = 0;
     let maxCount = 0;
     let unmetCount = 0;
     let noneCount = 0;
+    let keepCount = 0;
+    let reviewCount = 0;
+    let urgentAnnualFeeCount = 0;
 
-    for (const { progress } of cardPerformanceMap.values()) {
+    for (const { progress, renewal } of cardPerformanceMap.values()) {
       if (progress.status === "max") {
         maxCount++;
         metCount++;
@@ -99,6 +179,16 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
       } else {
         noneCount++;
       }
+
+      if (renewal.decision === "keep") {
+        keepCount++;
+      } else {
+        reviewCount++;
+      }
+
+      if (renewal.annualFeeDday?.isUrgent) {
+        urgentAnnualFeeCount++;
+      }
     }
 
     return {
@@ -107,6 +197,9 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
       maxCount,
       unmetCount,
       noneCount,
+      keepCount,
+      reviewCount,
+      urgentAnnualFeeCount,
     };
   }, [cardPerformanceMap, entries.length]);
 
@@ -141,7 +234,20 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
       toast.error("백업할 카드가 없습니다.");
       return;
     }
-    downloadMyCardsBackup(myCards.ids);
+    const hasMeta =
+      Array.isArray(myCards.items) &&
+      myCards.items.some(
+        (item) =>
+          item.issuedMonth !== undefined ||
+          item.annualFeeMonth !== undefined ||
+          item.expiryDate !== undefined,
+      );
+
+    if (hasMeta) {
+      downloadMyCardsBackup(myCards.ids, myCards.items);
+    } else {
+      downloadMyCardsBackup(myCards.ids);
+    }
     toast.success("내 카드 목록 백업 파일이 다운로드되었습니다.");
   };
 
@@ -155,7 +261,9 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
       if (!result.success) {
         toast.error(result.error);
       } else {
-        const added = myCards.importIds(result.cardIds, importMode);
+        const added = result.items
+          ? myCards.importIds(result.cardIds, importMode, result.items)
+          : myCards.importIds(result.cardIds, importMode);
         if (importMode === "overwrite") {
           toast.success(`기존 카드를 대체하여 총 ${result.count}장을 불러왔습니다.`);
         } else {
@@ -179,6 +287,7 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
         ref={fileInputRef}
         accept=".json,application/json"
         className="hidden"
+        aria-label="내 카드 백업 JSON 파일 업로드"
         data-testid="my-cards-file-input"
         onChange={handleFileUpload}
       />
@@ -285,9 +394,17 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
                     미달성 {performanceOverview.unmetCount}장
                   </span>
                 )}
+                {performanceOverview.urgentAnnualFeeCount > 0 && (
+                  <span
+                    data-testid="overview-urgent-fee-count"
+                    className="inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-950/80 px-2 py-0.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400"
+                  >
+                    ⚠️ 연회비 청구 임박 {performanceOverview.urgentAnnualFeeCount}장
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                월 지출액을 기준으로 보유 카드의 최소 실적 및 구간별 달성 현황을 실시간 추적합니다.
+                월 지출액을 기준으로 보유 카드의 최소 실적 달성 현황과 연회비 손익분기(갱신/해지)를 실시간 분석합니다.
               </p>
             </div>
 
@@ -361,6 +478,8 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
               const perf = cardPerformanceMap.get(entry.sourceId);
               const spend = perf?.spend ?? globalSpend;
               const tiers = perf?.tiers ?? [];
+              const meta = perf?.meta ?? {};
+              const renewal = perf?.renewal;
               const isEditing = editingCardSpendId === entry.sourceId;
 
               return (
@@ -373,7 +492,28 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
                     onClick={() => setSelected(entry)}
                     className="flex flex-1 flex-col gap-2 text-left"
                   >
-                    <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400">{entry.issuer || "카드사 미상"}</p>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                        {entry.issuer || "카드사 미상"}
+                      </p>
+                      {renewal?.annualFeeDday && (
+                        <span
+                          data-testid={
+                            renewal.annualFeeDday.isUrgent
+                              ? "annual-fee-urgent-badge"
+                              : "annual-fee-dday-badge"
+                          }
+                          className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${
+                            renewal.annualFeeDday.isUrgent
+                              ? "bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 animate-pulse"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                          }`}
+                        >
+                          {renewal.annualFeeDday.isUrgent ? "⚠️ " : ""}
+                          {renewal.annualFeeDday.dDayLabel}
+                        </span>
+                      )}
+                    </div>
                     <h3 className="text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">{entry.name}</h3>
                     {entry.benefitSummary && (
                       <p className="line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
@@ -387,6 +527,187 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
                       </span>
                     </div>
                   </button>
+
+                  {/* 발급월 / 연회비 청구월 / 유효기간 인라인 관리 및 청구 D-Day 알림 */}
+                  <div
+                    data-testid={`card-lifecycle-section-${entry.sourceId}`}
+                    className="flex flex-col gap-2 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-800/80 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        발급·청구월 및 유효기간
+                      </span>
+                      {renewal?.expiryDday && (
+                        <span
+                          data-testid="card-expiry-badge"
+                          className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${
+                            renewal.expiryDday.isExpired
+                              ? "bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                              : renewal.expiryDday.isExpiringSoon
+                                ? "bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+                          }`}
+                        >
+                          {renewal.expiryDday.dDayLabel}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <label className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                          발급월
+                        </span>
+                        <input
+                          type="month"
+                          aria-label={`${entry.name} 발급월`}
+                          data-testid={`issued-month-input-${entry.sourceId}`}
+                          value={meta.issuedMonth ?? ""}
+                          onChange={(e) =>
+                            handleUpdateMeta(entry.sourceId, {
+                              issuedMonth: e.target.value || undefined,
+                            })
+                          }
+                          className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-1 text-[11px] font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
+                        />
+                      </label>
+
+                      <label className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                          청구월
+                        </span>
+                        <select
+                          aria-label={`${entry.name} 연회비 청구월`}
+                          data-testid={`annual-fee-month-select-${entry.sourceId}`}
+                          value={meta.annualFeeMonth ?? ""}
+                          onChange={(e) =>
+                            handleUpdateMeta(entry.sourceId, {
+                              annualFeeMonth: e.target.value
+                                ? parseInt(e.target.value, 10)
+                                : undefined,
+                            })
+                          }
+                          className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-1 text-[11px] font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
+                        >
+                          <option value="">미설정</option>
+                          {Array.from({ length: 12 }, (_, idx) => idx + 1).map((month) => (
+                            <option key={month} value={month}>
+                              {month}월
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                          유효기간
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="MM/YY"
+                          maxLength={7}
+                          aria-label={`${entry.name} 유효기간`}
+                          data-testid={`expiry-date-input-${entry.sourceId}`}
+                          defaultValue={meta.expiryDate ?? ""}
+                          key={`${entry.sourceId}-${meta.expiryDate ?? ""}`}
+                          onBlur={(e) =>
+                            handleUpdateMeta(entry.sourceId, {
+                              expiryDate: e.target.value.trim() || undefined,
+                            })
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleUpdateMeta(entry.sourceId, {
+                                expiryDate: (e.target as HTMLInputElement).value.trim() || undefined,
+                              });
+                            }
+                          }}
+                          className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-1 text-[11px] font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
+                        />
+                      </label>
+                    </div>
+
+                    {renewal?.annualFeeDday?.isUrgent && renewal.annualFeeDday.alertMessage && (
+                      <div
+                        data-testid="annual-fee-urgent-alert"
+                        className="rounded-lg bg-rose-500/10 dark:bg-rose-500/15 px-2.5 py-1.5 text-[11px] font-medium text-rose-800 dark:text-rose-200 border border-rose-200/70 dark:border-rose-800/50"
+                      >
+                        🔔 {renewal.annualFeeDday.alertMessage}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 연간 누적 혜택 대비 연회비 손익 분석 (갱신/해지 의사결정 보조 위젯) */}
+                  {renewal && (
+                    <div
+                      data-testid="renewal-decision-widget"
+                      className={`flex flex-col gap-1.5 rounded-xl p-3 border text-xs ${
+                        renewal.decision === "keep"
+                          ? "bg-emerald-50/50 dark:bg-emerald-950/25 border-emerald-200/70 dark:border-emerald-800/50"
+                          : "bg-amber-50/60 dark:bg-amber-950/25 border-amber-200/70 dark:border-amber-800/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">
+                          갱신/해지 의사결정 가이드
+                        </span>
+                        <span
+                          data-testid="renewal-decision-badge"
+                          className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-bold ${
+                            renewal.decision === "keep"
+                              ? "bg-emerald-100/80 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700"
+                              : "bg-amber-100/80 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+                          }`}
+                        >
+                          {renewal.decisionLabel}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-1 rounded-lg bg-white/80 dark:bg-slate-900/60 p-2 text-[11px]">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            연간 예상 혜택
+                          </span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            {formatWon(renewal.annualBenefit)}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            연회비
+                          </span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            {formatWon(renewal.annualFee)}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            연간 순혜택
+                          </span>
+                          <span
+                            data-testid="renewal-net-benefit"
+                            className={`font-bold ${
+                              renewal.annualNetBenefit > 0
+                                ? "text-emerald-700 dark:text-emerald-400"
+                                : renewal.annualNetBenefit < 0
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-slate-700 dark:text-slate-300"
+                            }`}
+                          >
+                            {renewal.annualNetBenefit > 0 ? "+" : ""}
+                            {formatWon(renewal.annualNetBenefit)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <p
+                        data-testid="renewal-decision-reason"
+                        className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300"
+                      >
+                        {renewal.reasonText}
+                      </p>
+                    </div>
+                  )}
 
                   {/* 카드별 실적 트래커 및 개별 사용액 입력 위젯 */}
                   <div className="flex flex-col gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
@@ -437,6 +758,7 @@ export function MyCardsPage({ myCards }: MyCardsPageProps) {
                       tiers={tiers}
                       cardName={entry.name}
                       card={entry}
+                      currentDate={currentDate}
                     />
                   </div>
 
