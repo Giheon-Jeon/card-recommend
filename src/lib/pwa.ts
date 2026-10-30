@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 /**
  * [Issue #104] PWA(Progressive Web App) 오프라인 캐싱 전략 및 서비스 워커 수명주기 관리 유틸리티
  */
@@ -230,4 +232,49 @@ export async function unregisterServiceWorker(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export interface NetworkStatus {
+  isOnline: boolean;
+  reconnected: boolean;
+  dismissReconnected: () => void;
+}
+
+/**
+ * 브라우저의 실시간 네트워크 연결 상태(online / offline)를 감지하는 커스텀 훅입니다.
+ */
+export function useNetworkStatus(): NetworkStatus {
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    if (typeof navigator !== "undefined" && typeof navigator.onLine === "boolean") {
+      return navigator.onLine;
+    }
+    return true;
+  });
+  const [reconnected, setReconnected] = useState(false);
+
+  useEffect(() => {
+    const handleOffline = () => {
+      setIsOnline(false);
+      setReconnected(false);
+    };
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      setReconnected(true);
+    };
+
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, []);
+
+  return {
+    isOnline,
+    reconnected,
+    dismissReconnected: () => setReconnected(false),
+  };
 }
