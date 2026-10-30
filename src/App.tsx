@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, useCallback, lazy, Suspense } from "react";
 import { useMyCards } from "@/lib/myCards";
 import { CatalogGallery } from "@/components/catalog/CatalogGallery";
 import { GeminiApiKeyProvider } from "@/contexts/GeminiApiKeyContext";
@@ -6,6 +6,8 @@ import { ToastProvider } from "@/contexts/ToastContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { OfflineStatusBanner } from "@/components/common/OfflineStatusBanner";
+import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
+import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 
 const MyCardsPage = lazy(() =>
   import("@/components/catalog/MyCardsPage").then((m) => ({ default: m.MyCardsPage })),
@@ -25,15 +27,39 @@ function TabLoadingFallback() {
 
 type Tab = "gallery" | "myCards" | "simulator";
 
-const TABS: { id: Tab; label: string; description: string }[] = [
-  { id: "gallery", label: "카드 갤러리", description: "국내 전체 카드 둘러보기" },
-  { id: "myCards", label: "내 카드", description: "담아둔 카드 모아보기" },
-  { id: "simulator", label: "혜택 시뮬레이터", description: "내 지출로 최적 카드 찾기" },
+const TABS: { id: Tab; label: string; description: string; shortcutKey: string }[] = [
+  { id: "gallery", label: "카드 갤러리", description: "국내 전체 카드 둘러보기", shortcutKey: "1" },
+  { id: "myCards", label: "내 카드", description: "담아둔 카드 모아보기", shortcutKey: "2" },
+  { id: "simulator", label: "혜택 시뮬레이터", description: "내 지출로 최적 카드 찾기", shortcutKey: "3" },
 ];
 
 function AppContent() {
   const [tab, setTab] = useState<Tab>("gallery");
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
   const myCards = useMyCards();
+
+  const handleFocusSearch = useCallback(() => {
+    setTab("gallery");
+    setTimeout(() => {
+      const searchEl = document.getElementById("catalog-search-input") as HTMLInputElement | null;
+      searchEl?.focus();
+    }, 0);
+  }, []);
+
+  const handleToggleCompare = useCallback(() => {
+    setTab("gallery");
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("card-tracker:toggle-compare"));
+    }, 0);
+  }, []);
+
+  useGlobalShortcuts({
+    onSelectTab: (nextTab) => setTab(nextTab),
+    onFocusSearch: handleFocusSearch,
+    onToggleCompare: handleToggleCompare,
+    onToggleHelpModal: () => setIsShortcutsModalOpen((prev) => !prev),
+    onEscape: () => setIsShortcutsModalOpen(false),
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -50,6 +76,19 @@ function AppContent() {
               </p>
             </div>
             <div className="flex items-center gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={() => setIsShortcutsModalOpen(true)}
+                aria-label="키보드 단축키 도움말 열기"
+                title="키보드 단축키 안내 (?)"
+                data-testid="open-shortcuts-modal-btn"
+                className="flex h-9 items-center gap-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-xs transition hover:border-indigo-300 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+              >
+                <span className="hidden sm:inline">단축키</span>
+                <kbd className="rounded border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 font-mono text-[11px] font-bold">
+                  ?
+                </kbd>
+              </button>
               <ThemeToggle />
             </div>
           </header>
@@ -59,6 +98,7 @@ function AppContent() {
               <button
                 key={t.id}
                 type="button"
+                aria-keyshortcuts={t.shortcutKey}
                 onClick={() => setTab(t.id)}
                 className={`flex flex-col items-start rounded-xl px-4 py-2.5 text-left transition ${
                   tab === t.id
@@ -102,6 +142,11 @@ function AppContent() {
           )}
         </Suspense>
       </main>
+
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
+      />
     </div>
   );
 }

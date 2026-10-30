@@ -36,6 +36,22 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
   const comparison = useCardComparison();
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const handleToggleCompare = () => {
+      if (comparison.isModalOpen) {
+        comparison.closeModal();
+      } else {
+        comparison.openModal();
+      }
+    };
+
+    window.addEventListener("card-tracker:toggle-compare", handleToggleCompare);
+    return () => {
+      window.removeEventListener("card-tracker:toggle-compare", handleToggleCompare);
+    };
+  }, [comparison]);
 
   const debouncedQuery = useDebounce(query, 300);
 
@@ -135,6 +151,10 @@ export function CatalogGallery({ myCards }: CatalogGalleryProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.3-4.3M18 10.5a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
           </svg>
           <input
+            id="catalog-search-input"
+            ref={searchInputRef}
+            data-testid="catalog-search-input"
+            aria-keyshortcuts="/"
             type="text"
             value={query}
             onChange={(e) => {
