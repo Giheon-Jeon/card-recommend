@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import categoriesJson from "@data/categories.json";
 import type { ParsedSpendingItem } from "@/types/importer";
 import {
   matchCustomMerchantRule,
@@ -7,6 +8,10 @@ import {
 } from "@/lib/merchantRules";
 
 export type { ParsedSpendingItem };
+
+export const VALID_CATEGORY_IDS: ReadonlySet<string> = new Set(
+  (categoriesJson as { id: string }[]).map((c) => c.id)
+);
 
 // 한국어 지출 카테고리 매핑 규칙
 export const KEYWORD_MAP: { [category: string]: string[] } = {
@@ -410,15 +415,22 @@ export async function parseWithGemini(
     const parsed = JSON.parse(jsonStr);
     
     if (Array.isArray(parsed)) {
-      return (parsed as Record<string, unknown>[]).map((item) => ({
-        merchant: String(item.merchant || "알 수 없음"),
-        amount: Number(item.amount) || 0,
-        category: String(item.category || "etc"),
-      }));
+      return (parsed as Record<string, unknown>[]).map((item) => {
+        const rawAmount = Number(item.amount);
+        const validAmount = Number.isFinite(rawAmount) ? Math.trunc(rawAmount) : 0;
+        const rawCategory = String(item.category || "etc").trim();
+        const validCategory = VALID_CATEGORY_IDS.has(rawCategory) ? rawCategory : "etc";
+
+        return {
+          merchant: String(item.merchant || "알 수 없음"),
+          amount: validAmount,
+          category: validCategory,
+        };
+      });
     }
     return [];
   } catch (error) {
-    console.error("Gemini Response parsing failed:", responseText, error);
+    console.error(`Gemini Response parsing failed (length: ${responseText.length}):`, error);
     throw new Error("Gemini 분석 결과 형식이 올바르지 않습니다.");
   }
 }
