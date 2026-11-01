@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import categoriesJson from "@data/categories.json";
 import type { ParsedSpendingItem } from "@/types/importer";
 import {
   matchCustomMerchantRule,
@@ -8,18 +9,61 @@ import {
 
 export type { ParsedSpendingItem };
 
+export const VALID_CATEGORY_IDS: ReadonlySet<string> = new Set(
+  (categoriesJson as { id: string }[]).map((c) => c.id)
+);
+
 // 한국어 지출 카테고리 매핑 규칙
 export const KEYWORD_MAP: { [category: string]: string[] } = {
   cafe: ["스타벅스", "스벅", "투썸", "이디야", "커피", "메가커피", "빽다방", "폴바셋", "할리스", "카페", "디저트", "베이커리", "빵집", "설빙"],
   convenience: ["GS25", "CU", "세븐일레븐", "이마트24", "미니스톱", "편의점"],
   transport: ["택시", "버스", "지하철", "철도", "코레일", "SRT", "KTX", "티머니", "캐시비", "카카오T", "카카오택시", "타다", "대중교통"],
   mobile: ["SKT", "KT", "LGU+", "엘지유플러스", "알뜰폰", "통신요금", "통신비", "휴대폰요금"],
-  onlineShopping: ["쿠팡", "네이버쇼핑", "네이버페이", "G마켓", "지마켓", "11번가", "SSG", "옥션", "마켓컬리", "컬리", "위메프", "티몬", "배송", "택배"],
+  onlineShopping: ["쿠팡", "네이버쇼핑", "네이버페이", "스마트스토어", "네이버스마트스토어", "G마켓", "지마켓", "11번가", "SSG", "옥션", "마켓컬리", "컬리", "위메프", "티몬", "배송", "택배"],
   mart: ["이마트", "홈플러스", "롯데마트", "농협하나로", "하나로마트", "슈퍼마켓", "슈퍼", "마트", "다이소", "노브랜드"],
   dining: ["식당", "맛집", "푸드", "고기집", "갈비", "삼겹살", "국밥", "찌개", "치킨", "피자", "족발", "보쌈", "스시", "초밥", "반점", "짜장면", "파스타", "배달의민족", "배민", "요기요", "쿠팡이츠", "한식", "양식", "중식", "일식"],
   culture: ["넷플릭스", "유튜브", "premium", "디즈니", "티빙", "웨이브", "CGV", "롯데시네마", "메가박스", "영화관", "멜론", "지니", "티켓", "공연", "연극"],
   gas: ["주유소", "GS칼텍스", "칼텍스", "SK에너지", "엔크린", "에쓰오일", "S-OIL", "오일뱅크", "주유", "충전소"],
 };
+
+// 일반어 및 복합 브랜드명 부분 문자열 오탐 방지 예외 패턴
+const KEYWORD_FALSE_POSITIVE_PATTERNS: Record<string, RegExp> = {
+  마트: /스마트/gi,
+  버스: /메타버스|유니버스|옴니버스|캔버스/gi,
+  지니: /엔지니어/gi,
+  KT: /KT&G/gi,
+  쿠팡: /쿠팡이츠/gi,
+  이마트: /이마트24/gi,
+};
+
+/**
+ * 카테고리 키워드 매칭 헬퍼 함수
+ * - 영문 약어 키워드(KT, CU, SSG, KTX, SRT 등)에 영문 단어 경계((?<![A-Za-z])...(?![A-Za-z])) 적용
+ * - 일반어에 포함되는 키워드(스마트 -> 마트 오탐 등) 예외 제거 후 매칭
+ */
+export function matchesCategoryKeyword(text: string, keyword: string): boolean {
+  if (!text || !keyword) return false;
+
+  const exclusionPattern = KEYWORD_FALSE_POSITIVE_PATTERNS[keyword];
+  const targetText = exclusionPattern ? text.replace(exclusionPattern, " ") : text;
+
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const startsWithAlpha = /^[A-Za-z]/.test(keyword);
+  const endsWithAlpha = /[A-Za-z]$/.test(keyword);
+  const endsWithDigit = /\d$/.test(keyword);
+
+  const prefix = startsWithAlpha ? "(?<![A-Za-z])" : "";
+  const suffix = endsWithAlpha ? "(?![A-Za-z])" : endsWithDigit ? "(?!\\d)" : "";
+
+  const regex = new RegExp(`${prefix}${escaped}${suffix}`, "i");
+  return regex.test(targetText);
+}
+
+const EXCLUDED_AMOUNT_PREFIX_REGEX =
+  /(?:누적|총누적|누계|잔액|잔여|한도|가능액)\s*(?:금액|한도)?\s*[:：]?\s*$/;
+const APPROVAL_KEYWORD_REGEX = /(?:승인취소|결제취소|취소완료|승인|결제|취소|환불|일시불)/g;
+const CUMULATIVE_OR_BALANCE_CLAUSE_REGEX =
+  /(?:누적|총누적|누계|잔액|잔여|한도|가능액)\s*(?:금액|한도)?\s*[:：]?\s*[-\u25B2]?\s*(?:\d{1,3}(?:,\d{3})+|\d+)\s*원?/g;
 
 /**
  * 로컬 정규식 & 키워드 휴리스틱 파서
@@ -41,35 +85,92 @@ export function parseTextLocally(text: string, customRules?: CustomMerchantRule[
 
     // 금액 패턴 검색 (예: 12,000원, -5,500원, ▲5500, 45000 등)
     // 부호(-, ▲) 및 뒤에 원이 붙거나 숫자 형태인 경우를 찾습니다.
-    const amountRegex = /([-\u25B2]?\s*)(\d{1,3}(,\d{3})+|\d+)\s*원?/g;
+    const amountRegex = /([-\u25B2]?\s*)(\d{1,3}(?:,\d{3})+|\d+)(\s*원)?/g;
     let match;
-    let amounts: { value: number; hasNegativeSign: boolean; index: number; text: string }[] = [];
+    const amounts: {
+      value: number;
+      hasNegativeSign: boolean;
+      hasWonSuffix: boolean;
+      index: number;
+      text: string;
+    }[] = [];
 
     while ((match = amountRegex.exec(line)) !== null) {
       const signPart = match[1].trim();
       const valStr = match[2].replace(/,/g, "");
       const val = parseInt(valStr, 10);
-      if (val >= 100) { // 최소 100원 이상만 금액으로 인정 (날짜/시간 예외 처리)
-        const hasNegativeSign = signPart === "-" || signPart === "▲";
-        amounts.push({
-          value: val,
-          hasNegativeSign,
-          index: match.index,
-          text: match[0],
-        });
+      const hasWonSuffix = Boolean(match[3] && match[3].includes("원"));
+
+      if (val < 100) continue; // 최소 100원 이상만 금액으로 인정 (날짜/시간 예외 처리)
+
+      // 누적, 잔액, 한도, 잔여 바로 뒤에 오는 금액은 결제금액 후보에서 제외
+      const prefixText = line.substring(0, match.index);
+      if (EXCLUDED_AMOUNT_PREFIX_REGEX.test(prefixText)) {
+        continue;
       }
+
+      // '원' 접미사가 없는 소괄호 안 카드번호(예: (1234))는 금액 후보에서 제외
+      const afterIndex = match.index + match[0].length;
+      if (!hasWonSuffix && prefixText.endsWith("(") && line[afterIndex] === ")") {
+        continue;
+      }
+
+      const hasNegativeSign = signPart === "-" || signPart === "▲";
+      amounts.push({
+        value: val,
+        hasNegativeSign,
+        hasWonSuffix,
+        index: match.index,
+        text: match[0],
+      });
     }
 
     if (amounts.length === 0) continue;
 
-    // 여러 금액이 있을 때 마지막 매칭된 금액을 사용
-    const selectedAmountObj = amounts[amounts.length - 1];
+    // 1) '원' 접미사가 있는 금액 후보를 우선 선택
+    const wonAmounts = amounts.filter((a) => a.hasWonSuffix);
+    const candidateAmounts = wonAmounts.length > 0 ? wonAmounts : amounts;
+
+    // 2) 후보가 여럿이면 승인 키워드(승인, 결제, 취소, 환불, 일시불)에 가장 가까운 금액 선택
+    let selectedAmountObj = candidateAmounts[candidateAmounts.length - 1];
+    if (candidateAmounts.length > 1) {
+      const approvalSpans: { start: number; end: number }[] = [];
+      let kwMatch;
+      APPROVAL_KEYWORD_REGEX.lastIndex = 0;
+      while ((kwMatch = APPROVAL_KEYWORD_REGEX.exec(line)) !== null) {
+        approvalSpans.push({
+          start: kwMatch.index,
+          end: kwMatch.index + kwMatch[0].length,
+        });
+      }
+
+      if (approvalSpans.length > 0) {
+        let minDistance = Infinity;
+        for (const cand of candidateAmounts) {
+          const candStart = cand.index;
+          const candEnd = cand.index + cand.text.length;
+          const distance = Math.min(
+            ...approvalSpans.map((span) => {
+              if (candEnd < span.start) return span.start - candEnd;
+              if (candStart > span.end) return candStart - span.end;
+              return 0;
+            })
+          );
+          if (distance < minDistance) {
+            minDistance = distance;
+            selectedAmountObj = cand;
+          }
+        }
+      }
+    }
+
     const isRefund = selectedAmountObj.hasNegativeSign || hasRefundKeyword;
     const amount = isRefund ? -Math.abs(selectedAmountObj.value) : selectedAmountObj.value;
 
     const ignoredKeywords = [
       "결제", "승인", "완료", "일시불", "금액", "이용", "건", "님", "고객님",
-      "회원님", "체크", "신용", "원", "타사", "취소", "환불", "승인취소", "결제취소", "취소완료"
+      "회원님", "체크", "신용", "원", "타사", "취소", "환불", "승인취소", "결제취소", "취소완료",
+      "누적", "총누적", "누계", "잔액", "잔여", "한도", "가능액", "잔여한도", "누적금액",
     ];
 
     // 상호명(Merchant) 추정
@@ -78,10 +179,11 @@ export function parseTextLocally(text: string, customRules?: CustomMerchantRule[
 
     const cleanTokens = (str: string) => {
       const cleaned = str
-        .replace(/\[[^\]]+\]/g, "") // 대괄호 제거
-        .replace(/\([^)]+\)/g, "") // 소괄호 제거
-        .replace(/\b\d{2}[/-]\d{2}\s+\d{2}:\d{2}\b/g, "") // MM/DD HH:MM 제거
-        .replace(/\b\d{4}[/-]\d{2}[/-]\d{2}\b/g, "") // YYYY-MM-DD 제거
+        .replace(CUMULATIVE_OR_BALANCE_CLAUSE_REGEX, " ") // 누적/잔액/한도 금액 구문 제거
+        .replace(/\[[^\]]+\]/g, " ") // 대괄호 제거
+        .replace(/\([^)]+\)/g, " ") // 소괄호 제거
+        .replace(/\b\d{2}[/-]\d{2}\s+\d{2}:\d{2}\b/g, " ") // MM/DD HH:MM 제거
+        .replace(/\b\d{4}[/-]\d{2}[/-]\d{2}\b/g, " ") // YYYY-MM-DD 제거
         .trim();
       return cleaned
         .split(/\s+/)
@@ -96,14 +198,19 @@ export function parseTextLocally(text: string, customRules?: CustomMerchantRule[
     // 1) afterTokens 중 커스텀 룰 또는 KEYWORD_MAP에 직접 매칭되는 브랜드/상호명이 있다면 우선 선택
     const matchedAfter = afterTokens.find(token =>
       matchCustomMerchantRule(token, undefined, effectiveRules) ||
-      Object.values(KEYWORD_MAP).some(kws => kws.some(kw => token.toLowerCase().includes(kw.toLowerCase())))
+      Object.values(KEYWORD_MAP).some(kws => kws.some(kw => matchesCategoryKeyword(token, kw)))
     );
 
     // 2) beforeTokens 중 가장 마지막 토큰 우선 (예: "전기헌 스타벅스" -> "스타벅스", "티머니 대중교통" -> "대중교통")
     const candidateBefore = beforeTokens.length > 0 ? beforeTokens[beforeTokens.length - 1] : null;
+    const isBeforeCardOrPersonHeader =
+      candidateBefore !== null &&
+      (candidateBefore.includes("*") || /(?:카드|승인|취소|발신|체크|[가-힣]{2,4}님)$/.test(candidateBefore));
 
     if (matchedAfter) {
       merchant = matchedAfter;
+    } else if (afterTokens.length > 0 && isBeforeCardOrPersonHeader) {
+      merchant = afterTokens[0];
     } else if (candidateBefore) {
       merchant = candidateBefore;
     } else if (afterTokens.length > 0) {
@@ -124,13 +231,26 @@ export function parseTextLocally(text: string, customRules?: CustomMerchantRule[
     } else {
       for (const [catId, keywords] of Object.entries(KEYWORD_MAP)) {
         for (const keyword of keywords) {
-          if (merchant.toLowerCase().includes(keyword.toLowerCase()) || line.toLowerCase().includes(keyword.toLowerCase())) {
+          if (matchesCategoryKeyword(merchant, keyword)) {
             category = catId;
             matched = true;
             break;
           }
         }
         if (matched) break;
+      }
+
+      if (!matched) {
+        for (const [catId, keywords] of Object.entries(KEYWORD_MAP)) {
+          for (const keyword of keywords) {
+            if (matchesCategoryKeyword(line, keyword)) {
+              category = catId;
+              matched = true;
+              break;
+            }
+          }
+          if (matched) break;
+        }
       }
     }
 
@@ -295,15 +415,22 @@ export async function parseWithGemini(
     const parsed = JSON.parse(jsonStr);
     
     if (Array.isArray(parsed)) {
-      return (parsed as Record<string, unknown>[]).map((item) => ({
-        merchant: String(item.merchant || "알 수 없음"),
-        amount: Number(item.amount) || 0,
-        category: String(item.category || "etc"),
-      }));
+      return (parsed as Record<string, unknown>[]).map((item) => {
+        const rawAmount = Number(item.amount);
+        const validAmount = Number.isFinite(rawAmount) ? Math.trunc(rawAmount) : 0;
+        const rawCategory = String(item.category || "etc").trim();
+        const validCategory = VALID_CATEGORY_IDS.has(rawCategory) ? rawCategory : "etc";
+
+        return {
+          merchant: String(item.merchant || "알 수 없음"),
+          amount: validAmount,
+          category: validCategory,
+        };
+      });
     }
     return [];
   } catch (error) {
-    console.error("Gemini Response parsing failed:", responseText, error);
+    console.error(`Gemini Response parsing failed (length: ${responseText.length}):`, error);
     throw new Error("Gemini 분석 결과 형식이 올바르지 않습니다.");
   }
 }

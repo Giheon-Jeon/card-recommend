@@ -112,7 +112,9 @@ describe("getCardAdvice", () => {
     });
   });
 
-  it("Gemini API 반환 형식이 올바른 JSON 배열이 아니면 에러를 던져야 한다", async () => {
+  it("Gemini API 반환 형식이 올바른 JSON 배열이 아니면 원문을 노출하지 않고 길이만 로깅한 뒤 에러를 던져야 한다", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const sensitiveAdviceText = "invalid json content: 민감한_카드_소비내역_원문";
     const sampleEvaluations: CardEvaluation[] = [
       {
         card: {
@@ -135,10 +137,17 @@ describe("getCardAdvice", () => {
     // 잘못된 JSON 구조 응답
     mockGenerateContent.mockResolvedValue({
       response: {
-        text: () => "invalid json content",
+        text: () => sensitiveAdviceText,
       },
     });
 
     await expect(getCardAdvice("dummy-key", sampleEvaluations, [])).rejects.toThrow("AI 조언 결과 형식이 올바르지 않습니다.");
+
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    const loggedArgs = errorSpy.mock.calls[0].map((arg) => String(arg)).join(" ");
+    expect(loggedArgs).toContain(`(length: ${sensitiveAdviceText.length})`);
+    expect(loggedArgs).not.toContain(sensitiveAdviceText);
+
+    errorSpy.mockRestore();
   });
 });

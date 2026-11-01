@@ -91,7 +91,7 @@ export async function getCardAdvice(
       return acc;
     }, {});
   } catch (error) {
-    console.error("Gemini card advice parsing failed:", responseText, error);
+    console.error(`Gemini card advice parsing failed (length: ${responseText.length}):`, error);
     throw new Error("AI 조언 결과 형식이 올바르지 않습니다.");
   }
 }
