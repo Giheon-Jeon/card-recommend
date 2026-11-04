@@ -36,6 +36,8 @@ const KEYWORD_FALSE_POSITIVE_PATTERNS: Record<string, RegExp> = {
   이마트: /이마트24/gi,
 };
 
+const KEYWORD_REGEX_CACHE = new Map<string, RegExp>();
+
 /**
  * 카테고리 키워드 매칭 헬퍼 함수
  * - 영문 약어 키워드(KT, CU, SSG, KTX, SRT 등)에 영문 단어 경계((?<![A-Za-z])...(?![A-Za-z])) 적용
@@ -47,15 +49,25 @@ export function matchesCategoryKeyword(text: string, keyword: string): boolean {
   const exclusionPattern = KEYWORD_FALSE_POSITIVE_PATTERNS[keyword];
   const targetText = exclusionPattern ? text.replace(exclusionPattern, " ") : text;
 
-  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const startsWithAlpha = /^[A-Za-z]/.test(keyword);
-  const endsWithAlpha = /[A-Za-z]$/.test(keyword);
-  const endsWithDigit = /\d$/.test(keyword);
+  // 영문/숫자 경계가 필요 없는 순수 한글 키워드는 includes 패스트패스 사용
+  if (!/[A-Za-z0-9]/.test(keyword)) {
+    return targetText.includes(keyword);
+  }
 
-  const prefix = startsWithAlpha ? "(?<![A-Za-z])" : "";
-  const suffix = endsWithAlpha ? "(?![A-Za-z])" : endsWithDigit ? "(?!\\d)" : "";
+  let regex = KEYWORD_REGEX_CACHE.get(keyword);
+  if (!regex) {
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const startsWithAlpha = /^[A-Za-z]/.test(keyword);
+    const endsWithAlpha = /[A-Za-z]$/.test(keyword);
+    const endsWithDigit = /\d$/.test(keyword);
 
-  const regex = new RegExp(`${prefix}${escaped}${suffix}`, "i");
+    const prefix = startsWithAlpha ? "(?<![A-Za-z])" : "";
+    const suffix = endsWithAlpha ? "(?![A-Za-z])" : endsWithDigit ? "(?!\\d)" : "";
+
+    regex = new RegExp(`${prefix}${escaped}${suffix}`, "i");
+    KEYWORD_REGEX_CACHE.set(keyword, regex);
+  }
+
   return regex.test(targetText);
 }
 

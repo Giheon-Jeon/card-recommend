@@ -6,7 +6,9 @@ import { KEYWORD_MAP, matchesCategoryKeyword } from "@/lib/importerParser";
  * 카드가 카탈로그 혜택 요약에서 구체적 혜택을 찾지 못해 기본(0.7%) 혜택만 부여된 카드인지 확인합니다.
  */
 export function isFallbackBenefitCard(card: Card): boolean {
-  if (card.hasFallbackBenefitOnly) return true;
+  if (card.hasFallbackBenefitOnly !== undefined) {
+    return card.hasFallbackBenefitOnly;
+  }
   const benefits = card.tiers?.[0]?.benefits ?? [];
   return benefits.length > 0 && benefits.every((b) => b.isFallback === true);
 }
