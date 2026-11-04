@@ -119,6 +119,24 @@ describe("evaluateCard", () => {
     expect(cafeBreakdown?.benefitAmount).toBe(0);
     expect(cafeBreakdown?.spend).toBe(0);
   });
+
+  it("비정상적으로 높은 혜택률(rate > 1)이 주입되어도 혜택 금액은 지출액을 초과하지 않는다", () => {
+    const overRateCard: Card = {
+      ...sampleCard,
+      id: "over-rate-card",
+      tiers: [
+        {
+          minSpend: 0,
+          benefits: [{ category: "transport", type: "discount", rate: 3.33, capPerMonth: 10000 }],
+        },
+      ],
+    };
+
+    const result = evaluateCard(overRateCard, { transport: 3000 }, false);
+    const transportBreakdown = result.breakdown.find((b) => b.category === "transport");
+    expect(transportBreakdown?.benefitAmount).toBe(3000);
+    expect(transportBreakdown?.capped).toBe(true);
+  });
 });
 
 describe("calculateAnnualNetBenefit", () => {
