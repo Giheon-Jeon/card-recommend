@@ -1,6 +1,17 @@
 import type { Card, Benefit, BenefitType, CategoryId } from "@/types/card";
 import type { CatalogEntry } from "@/types/catalog";
-import { KEYWORD_MAP } from "@/lib/importerParser";
+import { KEYWORD_MAP, matchesCategoryKeyword } from "@/lib/importerParser";
+
+/**
+ * 카드가 카탈로그 혜택 요약에서 구체적 혜택을 찾지 못해 기본(0.7%) 혜택만 부여된 카드인지 확인합니다.
+ */
+export function isFallbackBenefitCard(card: Card): boolean {
+  if (card.hasFallbackBenefitOnly !== undefined) {
+    return card.hasFallbackBenefitOnly;
+  }
+  const benefits = card.tiers?.[0]?.benefits ?? [];
+  return benefits.length > 0 && benefits.every((b) => b.isFallback === true);
+}
 
 /**
  * 카탈로그 카드 정보(CatalogEntry)를 혜택 계산기용 카드 객체(Card)로 변환합니다.
@@ -17,10 +28,10 @@ export function catalogEntryToCard(entry: CatalogEntry): Card {
     for (const clause of clauses) {
       const matchedCategories: CategoryId[] = [];
 
-      // KEYWORD_MAP을 기반으로 매칭되는 카테고리 찾기
+      // KEYWORD_MAP을 기반으로 단어 경계 및 오탐 예외가 적용된 카테고리 찾기
       for (const [catId, keywords] of Object.entries(KEYWORD_MAP)) {
         for (const keyword of keywords) {
-          if (clause.toLowerCase().includes(keyword.toLowerCase())) {
+          if (matchesCategoryKeyword(clause, keyword)) {
             matchedCategories.push(catId as CategoryId);
             break;
           }
@@ -43,25 +54,40 @@ export function catalogEntryToCard(entry: CatalogEntry): Card {
       for (const matchedCategory of matchedCategories) {
         // 퍼센트 할인/적립률 파싱 (예: 5%, 0.2~2.0%, 10%)
         const percentMatch = clause.match(/(\d+(?:\.\d+)?)\s*%/);
+        const normalizedClause = clause.replace(/,/g, "");
+        const perAmountMatch = normalizedClause.match(
+          /(\d+)\s*원당\s*(\d+(?:\.\d+)?)\s*(?:원|포인트|P|점)/i
+        );
         let rate = 0;
         let type: BenefitType = "discount";
+        let fixedPerUse: number | undefined;
+        let usesPerMonth: number | undefined;
 
         if (percentMatch) {
           rate = parseFloat(percentMatch[1]) / 100;
         } else if (clause.includes("마일")) {
           // 마일리지 적립 파싱 (예: 1,500원당 1마일 -> (1 * 15) / 1500 = 1% 적립)
-          const wonMatch = clause.replace(/,/g, "").match(/(\d+)\s*원당/);
+          const wonMatch = normalizedClause.match(/(\d+)\s*원당/);
           const mileMatch = clause.match(/(\d+(?:\.\d+)?)\s*마일/);
           if (wonMatch && mileMatch) {
             const wonVal = parseFloat(wonMatch[1]);
             const mileVal = parseFloat(mileMatch[1]);
-            rate = (mileVal * 15) / wonVal;
-            type = "point";
+            if (wonVal > 0) {
+              rate = (mileVal * 15) / wonVal;
+              type = "point";
+            }
+          }
+        } else if (perAmountMatch) {
+          // X원당 Y원/포인트 할인·적립 파싱 (예: 1,500원당 200원 할인 -> 13.33%)
+          const baseUnitWon = parseFloat(perAmountMatch[1]);
+          const rewardWon = parseFloat(perAmountMatch[2]);
+          if (baseUnitWon > 0) {
+            rate = rewardWon / baseUnitWon;
           }
         } else {
           // 리터당 할인 혹은 금액 정액 할인 파싱
           // 범위 금액 매칭 (예: 200~600원, 5000원 등)
-          const wonMatch = clause.replace(/,/g, "").match(/(\d+)\s*(?:~\s*(\d+))?\s*원/);
+          const wonMatch = normalizedClause.match(/(\d+)\s*(?:~\s*(\d+))?\s*원/);
           if (wonMatch) {
             const minWon = parseInt(wonMatch[1], 10);
             const maxWon = wonMatch[2] ? parseInt(wonMatch[2], 10) : minWon;
@@ -71,17 +97,31 @@ export function catalogEntryToCard(entry: CatalogEntry): Card {
               // 리터당 할인은 1,500원/L 기준 동적 할인율로 계산 (예: 60원 -> 4%)
               rate = avgWon / 1500;
             } else {
+              // 정액 할인 메타 정보(1회당 할인액 및 월 예상 횟수) 모델링
+              fixedPerUse = avgWon;
+              usesPerMonth =
+                matchedCategory === "mobile"
+                  ? 1
+                  : matchedCategory === "transport" && avgWon <= 1000
+                  ? 20
+                  : 2;
+
               // 카테고리별 기준 금액 설정
-              let baseAmount = 10000; // 기본 10,000원 기준
+              let baseAmount = Math.max(10000, avgWon * 2);
               if (matchedCategory === "transport") {
-                baseAmount = 1500; // 대중교통 기본요금 1,500원 기준
+                // 시내버스/지하철 건당 소액 정액 할인(1,000원 이하)은 기본요금 1,500원 기준,
+                // KTX/SRT 등 고액 정액 할인(예: 5,000원 할인)은 50,000원 기준 적용
+                baseAmount = avgWon <= 1000 ? 1500 : Math.max(50000, avgWon * 2);
               } else if (matchedCategory === "mobile") {
-                baseAmount = 50000; // 이동통신 평균요금 50,000원 기준
+                baseAmount = Math.max(50000, avgWon * 2); // 이동통신 평균요금 50,000원 기준
               }
               rate = avgWon / baseAmount;
             }
           }
         }
+
+        // 모든 환산 비율의 상한을 1(100%) 이하로 제한
+        rate = Math.min(rate, 1);
 
         if (clause.includes("적립") || clause.includes("포인트")) {
           type = "point";
@@ -96,28 +136,40 @@ export function catalogEntryToCard(entry: CatalogEntry): Card {
             if (rate > existing.rate) {
               existing.rate = rate;
               existing.type = type;
+              existing.fixedPerUse = fixedPerUse;
+              existing.usesPerMonth = usesPerMonth;
             }
           } else {
-            benefits.push({
+            const benefitItem: Benefit = {
               category: matchedCategory,
               type,
               rate,
               capPerMonth: 10000, // 기본 월 한도
               description: clause.trim(),
-            });
+            };
+            if (fixedPerUse !== undefined) {
+              benefitItem.fixedPerUse = fixedPerUse;
+            }
+            if (usesPerMonth !== undefined) {
+              benefitItem.usesPerMonth = usesPerMonth;
+            }
+            benefits.push(benefitItem);
           }
         }
       }
     }
   }
 
-  // 매칭된 혜택이 전혀 없을 때 기본 baseline 혜택(0.7% 일반 할인) 부여
+  // 매칭된 혜택이 전혀 없을 때 기본 baseline 혜택(0.7% 일반 할인) 부여 및 추정 플래그 표시
+  let hasFallbackBenefitOnly = false;
   if (benefits.length === 0) {
+    hasFallbackBenefitOnly = true;
     benefits.push({
       category: "etc",
       type: "discount",
       rate: 0.007,
       capPerMonth: 5000,
+      isFallback: true,
       description: entry.benefitSummary || "기본 혜택",
     });
   }
@@ -129,6 +181,7 @@ export function catalogEntryToCard(entry: CatalogEntry): Card {
     cardType: entry.category === "체크" ? "check" : "credit",
     annualFee: entry.annualFee || 0,
     excludedCategories: [],
+    hasFallbackBenefitOnly,
     tiers: [
       {
         minSpend: 0, // 시뮬레이션에서 바로 보일 수 있도록 실적 기준을 0으로 설정

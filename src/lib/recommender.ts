@@ -1,21 +1,41 @@
 import type { Card, CategoryId, SpendingProfile } from "@/types/card";
 import type { CardEvaluation, CategoryWinner } from "@/types/recommendation";
+import { isFallbackBenefitCard } from "@/lib/cardConverter";
 import { evaluateCard, clearBenefitCache, getBenefitCacheStats } from "./benefitCalculator";
 
 export { clearBenefitCache, getBenefitCacheStats };
 
+export interface RankCardsOptions {
+  /** 혜택 요약에서 구체적 혜택을 찾지 못해 기본(0.7%) 혜택만 부여된 카드를 순위 계산에서 제외할지 여부 */
+  excludeFallbackCards?: boolean;
+}
+
 /**
  * 보유 카드 전체를 지출 프로필 기준으로 평가하고, 순혜택(netMonthlyBenefit) 내림차순으로 정렬합니다.
+ * 0. 기본(0.7% 추정) 혜택만 있는 카드는 실제 혜택 보유 카드보다 후순위로 배치 (또는 옵션 시 제외)
  * 1. 월 순혜택 내림차순
  * 2. 동일할 경우 월 총 혜택액 내림차순
  * 3. 동일할 경우 연회비 오름차순
  * 4. 동일할 경우 카드 이름 오름차순
  * 실적 미달 카드도 결과에는 포함하되 meetsMinimum: false 로 표시되므로, 화면에서 필터링해서 보여줄 수 있습니다.
  */
-export function rankCards(cards: Card[], spending: SpendingProfile): CardEvaluation[] {
-  return cards
+export function rankCards(
+  cards: Card[],
+  spending: SpendingProfile,
+  options?: RankCardsOptions,
+): CardEvaluation[] {
+  const targetCards = options?.excludeFallbackCards
+    ? cards.filter((card) => !isFallbackBenefitCard(card))
+    : cards;
+
+  return targetCards
     .map((card) => evaluateCard(card, spending))
     .sort((a, b) => {
+      const aFallback = isFallbackBenefitCard(a.card);
+      const bFallback = isFallbackBenefitCard(b.card);
+      if (aFallback !== bFallback) {
+        return aFallback ? 1 : -1;
+      }
       if (b.netMonthlyBenefit !== a.netMonthlyBenefit) {
         return b.netMonthlyBenefit - a.netMonthlyBenefit;
       }
@@ -51,6 +71,17 @@ export function bestCardPerCategory(
     for (const evaluation of evaluations) {
       const entry = evaluation.breakdown.find((b) => b.category === category);
       if (!entry || entry.benefitAmount <= 0) continue;
+
+      const currentIsFallback = isFallbackBenefitCard(evaluation.card);
+      const winnerIsFallback = winnerEval ? isFallbackBenefitCard(winnerEval.card) : true;
+
+      if (winnerEval && currentIsFallback !== winnerIsFallback) {
+        if (!currentIsFallback && winnerIsFallback) {
+          winner = { category, bestCard: evaluation.card, benefitAmount: entry.benefitAmount };
+          winnerEval = evaluation;
+        }
+        continue;
+      }
 
       if (entry.benefitAmount > winner.benefitAmount) {
         winner = { category, bestCard: evaluation.card, benefitAmount: entry.benefitAmount };

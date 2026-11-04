@@ -180,8 +180,9 @@ export function evaluateCombination(
         const benefitDef = tier.benefits.find((b) => b.category === cat);
         if (benefitDef) {
           const raw = sp * benefitDef.rate;
-          const capped =
+          const cappedByMonth =
             benefitDef.capPerMonth !== undefined ? Math.min(raw, benefitDef.capPerMonth) : raw;
+          const capped = Math.min(cappedByMonth, sp);
           cardMonthlyBenefit += capped;
 
           const assignment = assignments.find((a) => a.category === cat);
@@ -238,13 +239,18 @@ export function evaluateCombination(
 /**
  * 다중 카드 조합 탐색을 위해 지출과 매칭되는 핵심 후보 카드군을 선별합니다.
  */
-export function getCandidatePool(cards: Card[], spending: SpendingProfile, limit = 16): Card[] {
+export function getCandidatePool(
+  cards: Card[],
+  spending: SpendingProfile,
+  limit = 16,
+  precomputedRanked?: ReturnType<typeof rankCards>,
+): Card[] {
   if (cards.length <= limit) return cards;
 
   const candidateIds = new Set<string>();
 
   // 1. 단일 카드 랭킹 상위 카드 선별
-  const ranked = rankCards(cards, spending);
+  const ranked = precomputedRanked ?? rankCards(cards, spending);
   for (const r of ranked.slice(0, 6)) {
     candidateIds.add(r.card.id);
   }
@@ -296,7 +302,7 @@ export function recommendPortfolios(
   const bestSingle = ranked.find((r) => r.meetsMinimum) ?? ranked[0];
   const singleBestNet = bestSingle ? bestSingle.netMonthlyBenefit : 0;
 
-  const candidates = getCandidatePool(cards, spending, options?.candidateLimit ?? 16);
+  const candidates = getCandidatePool(cards, spending, options?.candidateLimit ?? 16, ranked);
   const n = candidates.length;
 
   // 후보군 카드별 카테고리 혜택을 사전 계산하여 반복 연산 비용 최소화

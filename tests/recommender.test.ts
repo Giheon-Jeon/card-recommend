@@ -69,6 +69,46 @@ describe("recommender - rankCards", () => {
     expect(ranked[0].meetsMinimum).toBe(false);
     expect(ranked[0].netMonthlyBenefit).toBe(-1000); // 혜택 0원 - 월 연회비 1000원
   });
+
+  it("기본(0.7% 추정) 혜택만 있는 카드는 실제 혜택 보유 카드보다 후순위로 정렬되며 excludeFallbackCards 옵션으로 제외할 수 있다", () => {
+    const fallbackCard: Card = {
+      id: "card-fallback",
+      name: "혜택 미확인 카드",
+      issuer: "G사",
+      cardType: "check",
+      annualFee: 0,
+      hasFallbackBenefitOnly: true,
+      tiers: [
+        {
+          minSpend: 0,
+          benefits: [{ category: "etc", type: "discount", rate: 0.007, capPerMonth: 5000, isFallback: true }],
+        },
+      ],
+    };
+
+    const realCard: Card = {
+      id: "card-real",
+      name: "실제 혜택 카드",
+      issuer: "H사",
+      cardType: "credit",
+      annualFee: 12000,
+      hasFallbackBenefitOnly: false,
+      tiers: [
+        {
+          minSpend: 0,
+          benefits: [{ category: "etc", type: "discount", rate: 0.005, capPerMonth: 5000 }],
+        },
+      ],
+    };
+
+    const ranked = rankCards([fallbackCard, realCard], { etc: 500000 });
+    expect(ranked[0].card.id).toBe("card-real");
+    expect(ranked[1].card.id).toBe("card-fallback");
+
+    const filteredRanked = rankCards([fallbackCard, realCard], { etc: 500000 }, { excludeFallbackCards: true });
+    expect(filteredRanked).toHaveLength(1);
+    expect(filteredRanked[0].card.id).toBe("card-real");
+  });
 });
 
 describe("recommender - bestCardPerCategory", () => {

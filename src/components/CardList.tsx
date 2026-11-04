@@ -37,7 +37,7 @@ export function CardList({ evaluations, cardTypes, categories, onToggleCardType 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [advice, setAdvice] = useState<CardAdviceMap>({});
   const [adviceLoading, setAdviceLoading] = useState(false);
-  const [adviceError, setAdviceError] = useState<string | null>(null);
+  const [adviceError, setAdviceError] = useState(null as string | null);
 
   const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
 
@@ -119,7 +119,7 @@ export function CardList({ evaluations, cardTypes, categories, onToggleCardType 
               </tr>
             )}
             {evaluations.map((evaluation, i) => {
-              const isBest = i === 0 && evaluation.meetsMinimum;
+              const isBest = i === 0 && evaluation.meetsMinimum && !evaluation.card.hasFallbackBenefitOnly;
               const isExpanded = expandedId === evaluation.card.id;
               const cardAdvice = advice[evaluation.card.id];
 
@@ -143,6 +143,14 @@ export function CardList({ evaluations, cardTypes, categories, onToggleCardType 
                             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
                               {CARD_TYPE_LABEL[evaluation.card.cardType]}
                             </span>
+                            {evaluation.card.hasFallbackBenefitOnly && (
+                              <span
+                                data-testid="fallback-benefit-badge"
+                                className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800"
+                              >
+                                기본 0.7% 추정
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-slate-500">{evaluation.card.issuer}</div>
                         </div>

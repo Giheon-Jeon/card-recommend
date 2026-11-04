@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { catalogEntryToCard } from "@/lib/cardConverter";
+import { catalogEntryToCard, isFallbackBenefitCard } from "@/lib/cardConverter";
+import { catalogCards, categories } from "@/lib/loadCatalog";
+import { evaluateCard } from "@/lib/benefitCalculator";
 import type { CatalogEntry } from "@/types/catalog";
 
 describe("catalogEntryToCard", () => {
@@ -20,6 +22,8 @@ describe("catalogEntryToCard", () => {
     expect(card.name).toBe("테스트 신용카드");
     expect(card.cardType).toBe("credit");
     expect(card.annualFee).toBe(10000);
+    expect(card.hasFallbackBenefitOnly).toBe(false);
+    expect(isFallbackBenefitCard(card)).toBe(false);
     expect(card.tiers).toHaveLength(1);
     expect(card.tiers[0].minSpend).toBe(0);
 
@@ -63,7 +67,7 @@ describe("catalogEntryToCard", () => {
     expect(etcBenefit?.type).toBe("cashback");
   });
 
-  it("혜택 정보가 없거나 해석할 수 없는 경우 기본 etc 혜택을 부여한다", () => {
+  it("혜택 정보가 없거나 해석할 수 없는 경우 기본 etc 혜택을 부여하고 추정 플래그를 표시한다", () => {
     const entry: CatalogEntry = {
       sourceId: 103,
       sourceUrl: "http://example.com/103",
@@ -79,6 +83,9 @@ describe("catalogEntryToCard", () => {
     expect(benefits[0].category).toBe("etc");
     expect(benefits[0].rate).toBeCloseTo(0.007);
     expect(benefits[0].type).toBe("discount");
+    expect(benefits[0].isFallback).toBe(true);
+    expect(card.hasFallbackBenefitOnly).toBe(true);
+    expect(isFallbackBenefitCard(card)).toBe(true);
   });
 
   it("한 구절에 여러 카테고리 키워드가 포함된 경우 모든 카테고리에 혜택을 부여한다", () => {
@@ -205,6 +212,8 @@ describe("catalogEntryToCard", () => {
     expect(transportBenefit).toBeDefined();
     // 평균 400원 / 기준 1,500원 = 26.67% 할인
     expect(transportBenefit?.rate).toBeCloseTo(0.2667);
+    expect(transportBenefit?.fixedPerUse).toBe(400);
+    expect(transportBenefit?.usesPerMonth).toBe(20);
 
     const entry2: CatalogEntry = {
       sourceId: 110,
@@ -222,5 +231,35 @@ describe("catalogEntryToCard", () => {
     expect(mobileBenefit).toBeDefined();
     // 5,000원 / 기준 50,000원 = 10% 할인
     expect(mobileBenefit?.rate).toBeCloseTo(0.1);
+    expect(mobileBenefit?.fixedPerUse).toBe(5000);
+    expect(mobileBenefit?.usesPerMonth).toBe(1);
+  });
+
+  it("정액 할인 환산 혜택은 지출을 넘지 않는다", () => {
+    const entry = catalogCards.find((c) => c.sourceId === 59)!;
+    const card = catalogEntryToCard(entry);
+    for (const b of card.tiers[0].benefits) expect(b.rate).toBeLessThanOrEqual(1);
+    expect(card.tiers[0].benefits.some((b) => b.category === "mobile")).toBe(false); // "KTX"≠"KT"
+    const r = evaluateCard(card, { transport: 3000 }, false);
+    expect(r.breakdown.find((b) => b.category === "transport")!.benefitAmount).toBeLessThanOrEqual(3000);
+  });
+
+  it("카탈로그 전체 카드(1,449장)에 대해 모든 혜택률은 1 이하이고 혜택 금액은 지출액을 초과하지 않는다", () => {
+    const smallSpendProfile = Object.fromEntries(categories.map((c) => [c.id, 3000]));
+
+    for (const entry of catalogCards) {
+      const card = catalogEntryToCard(entry);
+      for (const tier of card.tiers) {
+        for (const benefit of tier.benefits) {
+          expect(benefit.rate).toBeGreaterThan(0);
+          expect(benefit.rate).toBeLessThanOrEqual(1);
+        }
+      }
+
+      const evaluation = evaluateCard(card, smallSpendProfile, false);
+      for (const item of evaluation.breakdown) {
+        expect(item.benefitAmount).toBeLessThanOrEqual(item.spend);
+      }
+    }
   });
 });
