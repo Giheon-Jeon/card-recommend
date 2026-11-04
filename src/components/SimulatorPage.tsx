@@ -44,9 +44,13 @@ export function SimulatorPage({ myCards, onGoToGallery }: SimulatorPageProps) {
     return catalogCards.filter((c) => idSet.has(c.sourceId)).map(catalogEntryToCard);
   }, [myCards.ids]);
 
-  // 정보가 충분한(연회비/혜택 요약이 있는) 카드만 "전체 카드 추천" 대상으로 삼습니다.
+  // 정보가 충분하고 구체적인 카테고리 혜택이 파싱된 카드만 "전체 카드 추천" 대상으로 삼습니다.
+  // (혜택 요약에서 혜택을 찾지 못해 기본 0.7% 혜택만 부여된 카드는 전체 추천 순위에서 제외)
   const allCardObjects = useMemo(() => {
-    return catalogCards.filter((entry) => !isInfoInsufficient(entry)).map(catalogEntryToCard);
+    return catalogCards
+      .filter((entry) => !isInfoInsufficient(entry))
+      .map(catalogEntryToCard)
+      .filter((card) => !card.hasFallbackBenefitOnly);
   }, []);
 
   const scopedCardObjects = scope === "all" ? allCardObjects : myCardObjects;

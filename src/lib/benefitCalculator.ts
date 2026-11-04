@@ -98,14 +98,18 @@ export function evaluateCard(
     for (const benefit of tier.benefits) {
       const spend = Math.max(0, spending[benefit.category] ?? 0);
       const rawAmount = spend * benefit.rate;
-      const cappedAmount =
+      const cappedByMonth =
         benefit.capPerMonth !== undefined ? Math.min(rawAmount, benefit.capPerMonth) : rawAmount;
+      // 불변식 보장: 혜택 금액은 해당 카테고리 지출액을 초과할 수 없음 (benefitAmount <= spend)
+      const cappedAmount = Math.min(cappedByMonth, spend);
 
       breakdown.push({
         category: benefit.category,
         spend,
         benefitAmount: cappedAmount,
-        capped: benefit.capPerMonth !== undefined && rawAmount > benefit.capPerMonth,
+        capped:
+          (benefit.capPerMonth !== undefined && rawAmount > benefit.capPerMonth) ||
+          cappedByMonth > spend,
       });
 
       totalMonthlyBenefit += cappedAmount;
@@ -237,7 +241,8 @@ export function estimateMonthlyBenefitFromCard(card: Card, benchmarkMonthlySpend
   let totalBenefit = 0;
   for (const b of tier.benefits) {
     const rawBenefit = spendPerBenefit * b.rate;
-    const cappedBenefit = b.capPerMonth !== undefined ? Math.min(rawBenefit, b.capPerMonth) : rawBenefit;
+    const cappedByMonth = b.capPerMonth !== undefined ? Math.min(rawBenefit, b.capPerMonth) : rawBenefit;
+    const cappedBenefit = Math.min(cappedByMonth, spendPerBenefit);
     totalBenefit += cappedBenefit;
   }
 

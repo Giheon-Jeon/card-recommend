@@ -180,8 +180,9 @@ export function evaluateCombination(
         const benefitDef = tier.benefits.find((b) => b.category === cat);
         if (benefitDef) {
           const raw = sp * benefitDef.rate;
-          const capped =
+          const cappedByMonth =
             benefitDef.capPerMonth !== undefined ? Math.min(raw, benefitDef.capPerMonth) : raw;
+          const capped = Math.min(cappedByMonth, sp);
           cardMonthlyBenefit += capped;
 
           const assignment = assignments.find((a) => a.category === cat);
