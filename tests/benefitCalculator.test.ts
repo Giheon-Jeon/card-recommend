@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   evaluateCard,
+  normalizeSpendAmount,
+  normalizeSpendingProfile,
   calculateQualifyingSpend,
   findApplicableTierIndex,
   calculateAnnualNetBenefit,
@@ -36,6 +38,28 @@ const sampleCard: Card = {
     },
   ],
 };
+
+describe("normalizeSpendAmount & normalizeSpendingProfile", () => {
+  it("유한한 양수만 유지하고 0 이하 음수, NaN, Infinity는 0으로 정규화한다", () => {
+    expect(normalizeSpendAmount(50000)).toBe(50000);
+    expect(normalizeSpendAmount(0)).toBe(0);
+    expect(normalizeSpendAmount(-20000)).toBe(0);
+    expect(normalizeSpendAmount(Number.NaN)).toBe(0);
+    expect(normalizeSpendAmount(Number.POSITIVE_INFINITY)).toBe(0);
+    expect(normalizeSpendAmount(Number.NEGATIVE_INFINITY)).toBe(0);
+  });
+
+  it("지출 프로필에서 0보다 큰 유한 금액만 남긴 객체를 반환한다", () => {
+    expect(
+      normalizeSpendingProfile({
+        cafe: 300000,
+        etc: -100000,
+        mobile: Number.NaN,
+        dining: 0,
+      })
+    ).toEqual({ cafe: 300000 });
+  });
+});
 
 describe("calculateQualifyingSpend", () => {
   it("실적 제외 카테고리를 뺀 금액을 반환한다", () => {
@@ -118,6 +142,25 @@ describe("evaluateCard", () => {
     const cafeBreakdown = result.breakdown.find((b) => b.category === "cafe");
     expect(cafeBreakdown?.benefitAmount).toBe(0);
     expect(cafeBreakdown?.spend).toBe(0);
+  });
+
+  it("NaN 지출은 0원으로 취급한다", () => {
+    const tiered: Card = {
+      id: "tiered",
+      name: "구간별 혜택 카드",
+      issuer: "테스트",
+      cardType: "credit",
+      annualFee: 0,
+      tiers: [
+        { minSpend: 300000, benefits: [{ category: "cafe", type: "discount", rate: 0.05 }] },
+        { minSpend: 700000, benefits: [{ category: "cafe", type: "discount", rate: 0.2 }] },
+      ],
+    };
+
+    const result = evaluateCard(tiered, { cafe: Number.NaN, etc: 400000 }, false);
+    expect(result.totalMonthlyBenefit).toBe(0);
+    expect(result.netMonthlyBenefit).toBe(0);
+    expect(Number.isNaN(result.totalMonthlyBenefit)).toBe(false);
   });
 
   it("비정상적으로 높은 혜택률(rate > 1)이 주입되어도 혜택 금액은 지출액을 초과하지 않는다", () => {
