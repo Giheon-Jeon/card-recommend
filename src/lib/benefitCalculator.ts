@@ -70,6 +70,29 @@ export function serializeSpendingProfile(spending: SpendingProfile): string {
   return key;
 }
 
+/**
+ * 카드의 평가 결과에 영향을 미치는 속성(ID, 연회비, 제외 카테고리, 구간별 혜택)을
+ * 반영하여 결정론적 캐시 키를 생성합니다.
+ * 동일한 ID의 카드라도 연회비나 혜택 조건이 변경되면 이전 캐시가 무효화됩니다.
+ */
+export function serializeCardCacheKey(card: Card): string {
+  const baseId = card.id || card.name || "anonymous";
+  const annualFee = Number.isFinite(card.annualFee) ? card.annualFee : 0;
+  const excluded = card.excludedCategories?.length
+    ? card.excludedCategories.slice().sort().join(",")
+    : "";
+  const tiersPart = (card.tiers ?? [])
+    .map((tier) => {
+      const benefitsPart = (tier.benefits ?? [])
+        .map((b) => `${b.category}:${b.rate}:${b.capPerMonth ?? ""}`)
+        .join(",");
+      return `${tier.minSpend}[${benefitsPart}]`;
+    })
+    .join("|");
+
+  return `${baseId}@${annualFee}#${excluded}$${tiersPart}`;
+}
+
 const BENEFIT_CACHE_MAX_SIZE = 2000;
 const benefitEvaluationCache = new Map<string, CardEvaluation>();
 let cacheHits = 0;
@@ -98,7 +121,7 @@ export function evaluateCard(
   spending: SpendingProfile,
   useCache = true,
 ): CardEvaluation {
-  const cardKey = card.id || `${card.name}_${card.annualFee ?? 0}`;
+  const cardKey = serializeCardCacheKey(card);
   const cacheKey = `${cardKey}__${serializeSpendingProfile(spending)}`;
 
   if (useCache && benefitEvaluationCache.has(cacheKey)) {
