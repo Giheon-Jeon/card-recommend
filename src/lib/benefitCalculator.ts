@@ -1,12 +1,38 @@
 import type { Card, SpendingProfile } from "@/types/card";
 import type { CardEvaluation, CategoryBreakdown } from "@/types/recommendation";
 
+/**
+ * 개별 지출 금액을 정규화합니다.
+ * 유한한 숫자가 아니거나(NaN, Infinity 등) 0 이하인 음수 금액은 0으로 보정합니다.
+ */
+export function normalizeSpendAmount(amount: unknown): number {
+  const num = typeof amount === "number" ? amount : Number(amount);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+  return num;
+}
+
+/**
+ * 지출 프로필의 모든 카테고리 금액을 normalizeSpendAmount 기준으로 정규화합니다.
+ */
+export function normalizeSpendingProfile(spending: SpendingProfile): SpendingProfile {
+  const normalized: SpendingProfile = {};
+  if (!spending || typeof spending !== "object") return normalized;
+
+  for (const [category, amount] of Object.entries(spending)) {
+    const validAmount = normalizeSpendAmount(amount);
+    if (validAmount > 0) {
+      normalized[category] = validAmount;
+    }
+  }
+  return normalized;
+}
+
 /** 카테고리별 지출 총합에서 전월실적 제외 카테고리를 뺀 실적 인정 금액을 계산합니다. */
 export function calculateQualifyingSpend(card: Card, spending: SpendingProfile): number {
   const excluded = new Set(card.excludedCategories ?? []);
   const total = Object.entries(spending).reduce((sum, [category, amount]) => {
     if (excluded.has(category)) return sum;
-    return sum + (amount || 0);
+    return sum + normalizeSpendAmount(amount);
   }, 0);
 
   return Math.max(0, total);
@@ -35,13 +61,11 @@ export function findApplicableTierIndex(card: Card, qualifyingSpend: number): nu
  * 지출 프로필 객체를 캐시 키 문자열로 정규화합니다.
  */
 export function serializeSpendingProfile(spending: SpendingProfile): string {
-  const keys = Object.keys(spending).sort();
+  const normalized = normalizeSpendingProfile(spending);
+  const keys = Object.keys(normalized).sort();
   let key = "";
   for (const k of keys) {
-    const val = spending[k as keyof SpendingProfile] ?? 0;
-    if (val > 0) {
-      key += `${k}:${val};`;
-    }
+    key += `${k}:${normalized[k]};`;
   }
   return key;
 }
@@ -87,7 +111,8 @@ export function evaluateCard(
   }
 
   cacheMisses++;
-  const qualifyingSpend = calculateQualifyingSpend(card, spending);
+  const normalizedSpending = normalizeSpendingProfile(spending);
+  const qualifyingSpend = calculateQualifyingSpend(card, normalizedSpending);
   const tierIndex = findApplicableTierIndex(card, qualifyingSpend);
 
   const breakdown: CategoryBreakdown[] = [];
@@ -96,8 +121,9 @@ export function evaluateCard(
   if (tierIndex !== null && card.tiers[tierIndex]) {
     const tier = card.tiers[tierIndex];
     for (const benefit of tier.benefits) {
-      const spend = Math.max(0, spending[benefit.category] ?? 0);
-      const rawAmount = spend * benefit.rate;
+      const spend = normalizeSpendAmount(normalizedSpending[benefit.category]);
+      const safeRate = Number.isFinite(benefit.rate) && benefit.rate > 0 ? benefit.rate : 0;
+      const rawAmount = spend * safeRate;
       const cappedByMonth =
         benefit.capPerMonth !== undefined ? Math.min(rawAmount, benefit.capPerMonth) : rawAmount;
       // 불변식 보장: 혜택 금액은 해당 카테고리 지출액을 초과할 수 없음 (benefitAmount <= spend)
@@ -116,7 +142,8 @@ export function evaluateCard(
     }
   }
 
-  const netMonthlyBenefit = totalMonthlyBenefit - (card.annualFee || 0) / 12;
+  const safeAnnualFee = Number.isFinite(card.annualFee) ? card.annualFee : 0;
+  const netMonthlyBenefit = totalMonthlyBenefit - safeAnnualFee / 12;
 
   const result: CardEvaluation = {
     card,
