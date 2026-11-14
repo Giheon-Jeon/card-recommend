@@ -49,6 +49,21 @@ describe("performanceDday 유틸리티", () => {
       expect(result.dDay).toBe(18);
       expect(result.daysRemaining).toBe(19);
     });
+
+    it("유효하지 않은 기준일 전달 시 D-NaN 뱃지가 노출되지 않고 현재 시각으로 대체된다 (QA-009)", () => {
+      const result = calculateRemainingDaysInMonth("invalid");
+      expect(result.dDayLabel).not.toContain("NaN");
+      expect(Number.isFinite(result.dDay)).toBe(true);
+      expect(result.daysRemaining).toBeGreaterThanOrEqual(1);
+    });
+
+    it("기준일 0(Unix epoch) 전달 시 falsy로 무시하지 않고 1970년 1월 기준으로 계산한다", () => {
+      const result = calculateRemainingDaysInMonth(0);
+      // 1970-01-01 (UTC/KST 모두 1월 1일) -> 1월 말일 31일 기준 dDay 30
+      expect(result.dDay).toBe(30);
+      expect(result.daysRemaining).toBe(31);
+      expect(result.dDayLabel).toBe("말일 D-30");
+    });
   });
 
   describe("calculateDailyRecommendedSpend (일평균 권장 소비액)", () => {
@@ -169,6 +184,68 @@ describe("performanceDday 유틸리티", () => {
 
     it("카드 정보가 없거나 혜택이 없으면 null을 반환한다", () => {
       expect(getRecommendedSpendingTip(undefined, 50000)).toBeNull();
+    });
+
+    it("다중 구간 카드에서 팁은 미도달 상위 구간이 아닌 현재 적용 구간의 혜택률을 쓴다 (QA-004)", () => {
+      const tiered: Card = {
+        id: "tiered-card",
+        name: "구간별 차등 카드",
+        issuer: "신한카드",
+        cardType: "credit",
+        annualFee: 10000,
+        tiers: [
+          {
+            minSpend: 300000,
+            benefits: [{ category: "cafe", type: "discount", rate: 0.05 }],
+          },
+          {
+            minSpend: 600000,
+            benefits: [{ category: "cafe", type: "discount", rate: 0.2 }],
+          },
+        ],
+      };
+
+      // 기본/미도달 상태에서는 1구간(5%) 기준
+      const tip = getRecommendedSpendingTip(tiered, 100000);
+      expect(tip?.ratePercent).toBe(5);
+      expect(tip?.estimatedBenefit).toBe(5000);
+
+      // 1구간 충족(40만원) 상태에서도 2구간(20%)이 아닌 1구간(5%) 기준
+      const tier1Tip = getRecommendedSpendingTip(tiered, 100000, 400000);
+      expect(tier1Tip?.ratePercent).toBe(5);
+      expect(tier1Tip?.estimatedBenefit).toBe(5000);
+
+      // 2구간 충족(60만원) 상태 또는 명시적 tierIndex 지정 시 2구간(20%) 적용
+      const tier2Tip = getRecommendedSpendingTip(tiered, 100000, 600000);
+      expect(tier2Tip?.ratePercent).toBe(20);
+      expect(tier2Tip?.estimatedBenefit).toBe(20000);
+
+      const explicitTierTip = getRecommendedSpendingTip(tiered, 100000, {
+        tierIndex: 1,
+      });
+      expect(explicitTierTip?.ratePercent).toBe(20);
+      expect(explicitTierTip?.estimatedBenefit).toBe(20000);
+    });
+
+    it("월 한도(capPerMonth)가 0원인 혜택은 무제한으로 오인식하지 않고 예상 혜택을 0원으로 반환한다 (QA-008)", () => {
+      const cap0: Card = {
+        id: "cap0-card",
+        name: "월 한도 0원 카드",
+        issuer: "현대카드",
+        cardType: "credit",
+        annualFee: 0,
+        tiers: [
+          {
+            minSpend: 0,
+            benefits: [
+              { category: "cafe", type: "discount", rate: 0.1, capPerMonth: 0 },
+            ],
+          },
+        ],
+      };
+
+      const tip = getRecommendedSpendingTip(cap0, 100000);
+      expect(tip?.estimatedBenefit).toBe(0);
     });
   });
 
