@@ -43,8 +43,9 @@ export function PerformanceProgressTracker({
       progress.remainingToNextTier,
       card,
       currentDate,
+      currentSpend,
     );
-  }, [progress.remainingToNextTier, card, currentDate]);
+  }, [progress.remainingToNextTier, card, currentDate, currentSpend]);
 
   // 상태별 뱃지 스타일 및 진행바 색상 매핑
   const badgeStyle = useMemo(() => {
