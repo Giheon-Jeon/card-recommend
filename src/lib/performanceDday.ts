@@ -58,7 +58,11 @@ export function calculateRemainingDaysInMonth(currentDate?: Date | string | numb
   dDayLabel: string;
   isMonthEndUrgent: boolean;
 } {
-  const date = currentDate ? new Date(currentDate) : new Date();
+  const parsedDate =
+    currentDate !== undefined && currentDate !== null
+      ? new Date(currentDate)
+      : new Date();
+  const date = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
   const year = date.getFullYear();
   const month = date.getMonth();
   const currentDay = date.getDate();
