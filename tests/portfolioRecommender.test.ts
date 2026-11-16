@@ -71,6 +71,31 @@ describe("portfolioRecommender - getCardBestBenefit", () => {
     const shoppingBenefit = getCardBestBenefit(cardA, "onlineShopping");
     expect(shoppingBenefit.rate).toBe(0);
   });
+
+  it("maxQualifyingSpend 전달 시 도달 불가능한 상위 구간의 혜택률을 제외한다", () => {
+    const tiered: Card = {
+      id: "tiered-best",
+      name: "구간 카드",
+      issuer: "T사",
+      cardType: "credit",
+      annualFee: 0,
+      excludedCategories: [],
+      tiers: [
+        {
+          minSpend: 300000,
+          benefits: [{ category: "cafe", type: "discount", rate: 0.05 }],
+        },
+        {
+          minSpend: 700000,
+          benefits: [{ category: "cafe", type: "discount", rate: 0.2 }],
+        },
+      ],
+    };
+
+    expect(getCardBestBenefit(tiered, "cafe", 500000).rate).toBe(0.05);
+    expect(getCardBestBenefit(tiered, "cafe", 700000).rate).toBe(0.2);
+    expect(getCardBestBenefit(tiered, "cafe", 200000).rate).toBe(0);
+  });
 });
 
 describe("portfolioRecommender - evaluateCombination", () => {
@@ -129,6 +154,108 @@ describe("portfolioRecommender - evaluateCombination", () => {
   it("지출 내역이 없거나 유효 지출 카테고리가 없으면 null을 반환해야 한다", () => {
     const result = evaluateCombination([cardA, cardB], { cafe: 0, transport: 0 });
     expect(result).toBeNull();
+  });
+
+  it("혜택 0원 배정의 rate는 0이다 (QA-006)", () => {
+    const tiered: Card = {
+      id: "tiered-qa006",
+      name: "다구간 카드 T",
+      issuer: "T사",
+      cardType: "credit",
+      annualFee: 0,
+      excludedCategories: [],
+      tiers: [
+        {
+          minSpend: 200000,
+          benefits: [{ category: "cafe", type: "discount", rate: 0.05 }],
+        },
+        {
+          minSpend: 700000,
+          benefits: [{ category: "cafe", type: "discount", rate: 0.2 }],
+        },
+      ],
+    };
+
+    const other: Card = {
+      id: "other-qa006",
+      name: "일반 카드 O",
+      issuer: "O사",
+      cardType: "credit",
+      annualFee: 0,
+      excludedCategories: [],
+      tiers: [
+        {
+          minSpend: 100000,
+          benefits: [
+            { category: "dining", type: "discount", rate: 0.1 },
+            { category: "cafe", type: "discount", rate: 0.04 },
+          ],
+        },
+      ],
+    };
+
+    const p = evaluateCombination([tiered, other], { cafe: 100000, dining: 100000 })!;
+    expect(p).not.toBeNull();
+    const cafeAssign = p.categoryAssignments.find((a) => a.category === "cafe");
+    expect(cafeAssign?.benefitAmount).toBe(0);
+    for (const a of p.categoryAssignments) {
+      if (a.benefitAmount === 0) {
+        expect(a.rate).toBe(0);
+      }
+    }
+  });
+
+  it("도달 불가능한 상위 구간 대신 도달 가능 구간의 혜택률을 기준으로 배분한다", () => {
+    const tiered: Card = {
+      id: "tiered-alloc",
+      name: "다구간 카드",
+      issuer: "T사",
+      cardType: "credit",
+      annualFee: 0,
+      excludedCategories: [],
+      tiers: [
+        {
+          minSpend: 200000,
+          benefits: [
+            { category: "cafe", type: "discount", rate: 0.05 },
+            { category: "dining", type: "discount", rate: 0.1 },
+          ],
+        },
+        {
+          minSpend: 1000000,
+          benefits: [{ category: "cafe", type: "discount", rate: 0.2 }],
+        },
+      ],
+    };
+
+    const other: Card = {
+      id: "other-alloc",
+      name: "카페 특화 카드",
+      issuer: "O사",
+      cardType: "credit",
+      annualFee: 0,
+      excludedCategories: [],
+      tiers: [
+        {
+          minSpend: 200000,
+          benefits: [
+            { category: "cafe", type: "discount", rate: 0.1 },
+            { category: "dining", type: "discount", rate: 0.05 },
+          ],
+        },
+      ],
+    };
+
+    // 총 지출 500,000원이므로 tiered의 2구간(100만원)은 도달 불가 -> cafe는 5% vs other 10% 비교
+    const p = evaluateCombination([tiered, other], { cafe: 250000, dining: 250000 })!;
+    expect(p).not.toBeNull();
+    const cafeAssign = p.categoryAssignments.find((a) => a.category === "cafe");
+    const diningAssign = p.categoryAssignments.find((a) => a.category === "dining");
+    expect(cafeAssign?.assignedCard.id).toBe("other-alloc");
+    expect(cafeAssign?.rate).toBe(0.1);
+    expect(diningAssign?.assignedCard.id).toBe("tiered-alloc");
+    expect(diningAssign?.rate).toBe(0.1);
+    expect(p.totalMonthlyBenefit).toBe(50000);
   });
 });
 

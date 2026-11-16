@@ -17,15 +17,20 @@ export interface RecommendPortfolioOptions {
 
 /**
  * 카드가 특정 카테고리에 대해 제공하는 가장 높은 할인/적립률과 해당 한도를 조회합니다.
+ * @param maxQualifyingSpend 전달 시 해당 실적으로 도달 가능한 구간(minSpend <= maxQualifyingSpend)만 고려합니다.
  */
 export function getCardBestBenefit(
   card: Card,
   category: CategoryId,
+  maxQualifyingSpend?: number,
 ): { rate: number; capPerMonth?: number } {
   let bestRate = 0;
   let bestCap: number | undefined = undefined;
 
   for (const tier of card.tiers) {
+    if (maxQualifyingSpend !== undefined && tier.minSpend > maxQualifyingSpend) {
+      continue;
+    }
     const benefit = tier.benefits.find((b) => b.category === category);
     if (benefit && benefit.rate > bestRate) {
       bestRate = benefit.rate;
@@ -64,12 +69,20 @@ export function evaluateCombination(
     candidateCards: Card[];
   }> = [];
 
+  // 카드별로 현재 전체 지출 기준 도달 가능한 최대 실적(제외 카테고리 반영)을 산출
+  const maxQualifyingByCard = new Map<string, number>();
+  for (const card of cards) {
+    maxQualifyingByCard.set(card.id, calculateQualifyingSpend(card, spending));
+  }
+
   for (const [category, spend] of activeEntries) {
     const ratedCards = cards
       .map((card) => {
+        const maxQualifying = maxQualifyingByCard.get(card.id);
         const benefit = ratesLookup
-          ? (ratesLookup.get(card.id)?.[category] ?? getCardBestBenefit(card, category))
-          : getCardBestBenefit(card, category);
+          ? (ratesLookup.get(card.id)?.[category] ??
+            getCardBestBenefit(card, category, maxQualifying))
+          : getCardBestBenefit(card, category, maxQualifying);
         return {
           card,
           ...benefit,
@@ -178,6 +191,7 @@ export function evaluateCombination(
         assignedCategories.push(cat);
 
         const benefitDef = tier.benefits.find((b) => b.category === cat);
+        const assignment = assignments.find((a) => a.category === cat);
         if (benefitDef) {
           const raw = sp * benefitDef.rate;
           const cappedByMonth =
@@ -185,21 +199,24 @@ export function evaluateCombination(
           const capped = Math.min(cappedByMonth, sp);
           cardMonthlyBenefit += capped;
 
-          const assignment = assignments.find((a) => a.category === cat);
           if (assignment) {
             assignment.benefitAmount = capped;
-            assignment.rate = benefitDef.rate;
+            assignment.rate = capped > 0 ? benefitDef.rate : 0;
           }
+        } else if (assignment) {
+          assignment.benefitAmount = 0;
+          assignment.rate = 0;
         }
       }
     } else {
-      // 실적 미달 시 혜택 0원
+      // 실적 미달 시 혜택 0원 및 표시 혜택률 0으로 갱신
       for (const [cat, sp] of Object.entries(allocatedProfile)) {
         if (!sp || sp <= 0) continue;
         assignedCategories.push(cat);
         const assignment = assignments.find((a) => a.category === cat);
         if (assignment) {
           assignment.benefitAmount = 0;
+          assignment.rate = 0;
         }
       }
     }
@@ -255,20 +272,25 @@ export function getCandidatePool(
     candidateIds.add(r.card.id);
   }
 
-  // 2. 사용자가 지출하는 각 카테고리별 최고 혜택 카드 선별
+  // 2. 사용자가 지출하는 각 카테고리별 최고 혜택 카드 선별 (도달 가능한 구간만 반영)
   const activeCategories = Object.entries(spending)
     .filter(([, amount]) => (amount || 0) > 0)
     .map(([cat]) => cat);
 
+  const maxQualifyingByCard = new Map<string, number>();
+  for (const c of cards) {
+    maxQualifyingByCard.set(c.id, calculateQualifyingSpend(c, spending));
+  }
+
   for (const cat of activeCategories) {
     const sorted = [...cards].sort((a, b) => {
-      const rateA = getCardBestBenefit(a, cat).rate;
-      const rateB = getCardBestBenefit(b, cat).rate;
+      const rateA = getCardBestBenefit(a, cat, maxQualifyingByCard.get(a.id)).rate;
+      const rateB = getCardBestBenefit(b, cat, maxQualifyingByCard.get(b.id)).rate;
       return rateB - rateA;
     });
 
     for (const c of sorted.slice(0, 2)) {
-      if (getCardBestBenefit(c, cat).rate > 0) {
+      if (getCardBestBenefit(c, cat, maxQualifyingByCard.get(c.id)).rate > 0) {
         candidateIds.add(c.id);
       }
     }
@@ -305,12 +327,13 @@ export function recommendPortfolios(
   const candidates = getCandidatePool(cards, spending, options?.candidateLimit ?? 16, ranked);
   const n = candidates.length;
 
-  // 후보군 카드별 카테고리 혜택을 사전 계산하여 반복 연산 비용 최소화
+  // 후보군 카드별 카테고리 혜택을 사전 계산하여 반복 연산 비용 최소화 (도달 가능 구간 기준)
   const ratesLookup = new Map<string, Record<string, { rate: number; capPerMonth?: number }>>();
   for (const c of candidates) {
+    const maxQualifying = calculateQualifyingSpend(c, spending);
     const rateMap: Record<string, { rate: number; capPerMonth?: number }> = {};
     for (const [cat] of activeEntries) {
-      rateMap[cat] = getCardBestBenefit(c, cat);
+      rateMap[cat] = getCardBestBenefit(c, cat, maxQualifying);
     }
     ratesLookup.set(c.id, rateMap);
   }
