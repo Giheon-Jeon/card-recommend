@@ -191,6 +191,7 @@ export function evaluateCombination(
         assignedCategories.push(cat);
 
         const benefitDef = tier.benefits.find((b) => b.category === cat);
+        const assignment = assignments.find((a) => a.category === cat);
         if (benefitDef) {
           const raw = sp * benefitDef.rate;
           const cappedByMonth =
@@ -198,21 +199,24 @@ export function evaluateCombination(
           const capped = Math.min(cappedByMonth, sp);
           cardMonthlyBenefit += capped;
 
-          const assignment = assignments.find((a) => a.category === cat);
           if (assignment) {
             assignment.benefitAmount = capped;
-            assignment.rate = benefitDef.rate;
+            assignment.rate = capped > 0 ? benefitDef.rate : 0;
           }
+        } else if (assignment) {
+          assignment.benefitAmount = 0;
+          assignment.rate = 0;
         }
       }
     } else {
-      // 실적 미달 시 혜택 0원
+      // 실적 미달 시 혜택 0원 및 표시 혜택률 0으로 갱신
       for (const [cat, sp] of Object.entries(allocatedProfile)) {
         if (!sp || sp <= 0) continue;
         assignedCategories.push(cat);
         const assignment = assignments.find((a) => a.category === cat);
         if (assignment) {
           assignment.benefitAmount = 0;
+          assignment.rate = 0;
         }
       }
     }
