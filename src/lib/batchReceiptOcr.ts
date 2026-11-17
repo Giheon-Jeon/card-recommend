@@ -178,9 +178,16 @@ export async function processReceiptBatchSequentially(
     callbacks?.onItemComplete?.(updated, i, total);
     callbacks?.onProgress?.(i + 1, total, updated);
 
-    // 마지막 항목이 아니며 중단되지 않은 경우 딜레이 부여
+    // 마지막 항목이 아니며 중단되지 않은 경우 딜레이 부여 (지연 중 중단 시 완료된 결과 보존)
     if (i < total - 1 && !signal?.aborted) {
-      await sleep(delayMs, signal);
+      try {
+        await sleep(delayMs, signal);
+      } catch (err) {
+        if (signal?.aborted) {
+          break;
+        }
+        throw err;
+      }
     }
   }
 
