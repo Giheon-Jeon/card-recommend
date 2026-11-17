@@ -179,6 +179,30 @@ describe("batchReceiptOcr unit tests", () => {
       expect(results[1].status).toBe("pending");
       expect(results[2].status).toBe("pending");
     });
+
+    it("지연(sleep) 중 중단해도 예외로 유실되지 않고 완료된 항목을 반환한다 (QA-010)", async () => {
+      vi.spyOn(importerParser, "parseWithGemini").mockResolvedValue([
+        { merchant: "A", amount: 1000, category: "etc" },
+      ]);
+      const controller = new AbortController();
+      const items = [
+        createBatchReceiptItem(new File(["a"], "a.png", { type: "image/png" }), "a"),
+        createBatchReceiptItem(new File(["b"], "b.png", { type: "image/png" }), "b"),
+      ];
+
+      const results = await processReceiptBatchSequentially(items, "key", {
+        delayMs: 1000,
+        signal: controller.signal,
+        callbacks: {
+          onItemComplete: () => {
+            setTimeout(() => controller.abort(), 10);
+          },
+        },
+      });
+
+      expect(results[0].status).toBe("completed");
+      expect(results[1].status).toBe("pending");
+    });
   });
 
   describe("retryBatchReceiptItem", () => {
@@ -240,14 +264,29 @@ describe("batchReceiptOcr unit tests", () => {
       const { mergedItems, duplicateCount } = mergeAndDeduplicateItems(items);
 
       expect(mergedItems).toHaveLength(4);
-      expect(duplicateCount).toBe(2);
+      expect(duplicateCount).toBe(1);
 
       const dupItems = mergedItems.filter((it) => it.isDuplicate);
-      expect(dupItems).toHaveLength(2);
-      expect(dupItems.every((it) => it.amount === 4500)).toBe(true);
+      expect(dupItems).toHaveLength(1);
+      expect(dupItems[0].amount).toBe(4500);
+      expect(dupItems[0].merchant).toBe("스타벅스강남점");
 
       const nonDup = mergedItems.filter((it) => !it.isDuplicate);
-      expect(nonDup).toHaveLength(2);
+      expect(nonDup).toHaveLength(3);
+    });
+
+    it("같은 키의 첫 항목은 중복으로 표시하지 않는다 (QA-005)", () => {
+      const mk = (id: string): BatchReceiptItem => ({
+        id,
+        file: new File([""], `${id}.png`),
+        previewUrl: "",
+        status: "completed",
+        parsedItems: [{ merchant: "스타벅스", amount: 4500, category: "cafe" }],
+      });
+
+      const r = mergeAndDeduplicateItems([mk("r1"), mk("r2")]);
+      expect(r.mergedItems.map((m) => m.isDuplicate)).toEqual([false, true]);
+      expect(r.duplicateCount).toBe(1);
     });
   });
 });
