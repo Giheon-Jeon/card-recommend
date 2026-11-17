@@ -219,23 +219,18 @@ export function mergeAndDeduplicateItems(
     }
   }
 
-  // 가맹점명(공백/소문자 정규화) + 금액(부호 포함) 키로 출현 횟수 계산
-  const keyCountMap = new Map<string, number>();
-
-  for (const item of allItems) {
-    const normMerchant = item.merchant.trim().toLowerCase().replace(/\s+/g, "");
-    const key = `${normMerchant}::${item.amount}`;
-    keyCountMap.set(key, (keyCountMap.get(key) || 0) + 1);
-  }
-
+  // 가맹점명(공백/소문자 정규화) + 금액(부호 포함) 키로 첫 출현은 원본 유지, 2번째부터 중복 마킹
+  const seenKeys = new Set<string>();
   let duplicateCount = 0;
+
   const mergedItems = allItems.map((item) => {
     const normMerchant = item.merchant.trim().toLowerCase().replace(/\s+/g, "");
     const key = `${normMerchant}::${item.amount}`;
-    const count = keyCountMap.get(key) || 0;
-    const isDuplicate = count > 1;
+    const isDuplicate = seenKeys.has(key);
     if (isDuplicate) {
       duplicateCount++;
+    } else {
+      seenKeys.add(key);
     }
     return {
       ...item,
