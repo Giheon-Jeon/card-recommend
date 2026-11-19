@@ -6,7 +6,7 @@
 
 ## 해결 내용
 - **`src/components/ApiKeySettings.tsx`**
-  - 팝오버 컨테이너에 `role="dialog"`를, 트리거 버튼에 `aria-haspopup="dialog"`를 추가했습니다.
+  - 팝오버 컨테이너를 시맨틱 `<dialog open>` 태그로 교체하고, 트리거 버튼에 `aria-haspopup="dialog"`를 추가했습니다.
   - `useEffect`와 `useRef`(`triggerButtonRef`, `keyInputRef`, `wasOpenRef`)를 통해 팝오버가 열릴 때 API Key 입력창(`#gemini-api-key-input`)으로 포커스를 이동하고, `Escape` 키 입력 시 팝오버를 닫으며, 닫힐 때 트리거 버튼으로 포커스가 복귀되도록 구현했습니다.
 - **`tests/ApiKeySettings.test.tsx`**
   - `role="dialog"` 렌더링, 열림 시 입력창 포커스 이동, `Escape` 키 닫힘 및 트리거 버튼 포커스 복귀 단위 테스트를 추가했습니다.

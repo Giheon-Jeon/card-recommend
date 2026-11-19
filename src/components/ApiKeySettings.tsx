@@ -80,10 +80,10 @@ export function ApiKeySettings({
       </button>
 
       {showKeyInput && (
-        <div
-          role="dialog"
+        <dialog
+          open
           aria-label="Gemini API Key 설정"
-          className="absolute right-0 top-11 z-20 w-96 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl transition-all duration-300"
+          className="absolute right-0 left-auto top-11 z-20 m-0 w-96 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-2xl transition-all duration-300"
         >
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h4 className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
@@ -203,7 +203,7 @@ export function ApiKeySettings({
               </div>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
     </div>
   );
