@@ -115,4 +115,34 @@ describe("ApiKeySettings", () => {
 
     expect(handleSave).toHaveBeenCalledWith("session");
   });
+
+  it("팝오버가 열리면 role=dialog로 표시되고 입력창으로 포커스가 이동하며, Escape 키로 닫히고 트리거 버튼으로 포커스가 복귀한다", () => {
+    render(
+      <ApiKeySettings
+        apiKey=""
+        onChange={vi.fn()}
+        onSave={vi.fn()}
+        onRemove={vi.fn()}
+      />
+    );
+
+    const triggerButton = screen.getByRole("button", { name: /Gemini API 설정/ });
+    expect(triggerButton).toHaveAttribute("aria-haspopup", "dialog");
+    expect(triggerButton).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(triggerButton);
+
+    const dialog = screen.getByRole("dialog", { name: "Gemini API Key 설정" });
+    expect(dialog).toBeInTheDocument();
+    expect(triggerButton).toHaveAttribute("aria-expanded", "true");
+
+    const input = screen.getByLabelText("API Key 입력");
+    expect(input).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(triggerButton).toHaveAttribute("aria-expanded", "false");
+    expect(triggerButton).toHaveFocus();
+  });
 });
