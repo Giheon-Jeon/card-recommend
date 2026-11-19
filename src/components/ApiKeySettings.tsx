@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Settings, Key, ShieldAlert, CheckCircle2 } from "lucide-react";
 import type { StorageType } from "../contexts/GeminiApiKeyContext";
 
@@ -25,7 +25,31 @@ export function ApiKeySettings({
 }: ApiKeySettingsProps) {
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [currentStorageType, setCurrentStorageType] = useState<StorageType>(storageType);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
+  const keyInputRef = useRef<HTMLInputElement>(null);
+  const wasOpenRef = useRef(false);
   const hasKey = apiKey.trim().length > 0;
+
+  useEffect(() => {
+    if (showKeyInput) {
+      wasOpenRef.current = true;
+      keyInputRef.current?.focus();
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setShowKeyInput(false);
+        }
+      };
+
+      document.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+      };
+    } else if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      triggerButtonRef.current?.focus();
+    }
+  }, [showKeyInput]);
 
   const handleStorageChange = (type: StorageType) => {
     setCurrentStorageType(type);
@@ -40,9 +64,11 @@ export function ApiKeySettings({
   return (
     <div className="relative">
       <button
+        ref={triggerButtonRef}
         type="button"
         onClick={() => setShowKeyInput(!showKeyInput)}
         aria-expanded={showKeyInput}
+        aria-haspopup="dialog"
         className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold border transition-all duration-250 ${
           hasKey
             ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
@@ -55,6 +81,7 @@ export function ApiKeySettings({
 
       {showKeyInput && (
         <div
+          role="dialog"
           aria-label="Gemini API Key 설정"
           className="absolute right-0 top-11 z-20 w-96 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl transition-all duration-300"
         >
@@ -88,6 +115,7 @@ export function ApiKeySettings({
                 API Key 입력
               </label>
               <input
+                ref={keyInputRef}
                 id="gemini-api-key-input"
                 type="password"
                 placeholder="AIzaSy..."
