@@ -92,6 +92,49 @@ export function parsePerformanceTiers(
 }
 
 /**
+ * 전월 실적 기준 텍스트에 카드사 공식 기준(무실적 명시 또는 유효 금액 구간)이 포함되어 있는지 판별합니다.
+ * false인 경우 parsePerformanceTiers가 카드 유형별 임의 기본 구간을 반환합니다.
+ */
+export function hasConfirmedPerformanceStandard(standardText?: string): boolean {
+  if (!standardText || !standardText.trim()) {
+    return false;
+  }
+
+  const normalized = standardText.trim().toLowerCase();
+  if (
+    normalized.includes("조건 없음") ||
+    normalized.includes("조건없음") ||
+    normalized.includes("무실적") ||
+    normalized.includes("실적 무관") ||
+    normalized.includes("실적무관") ||
+    normalized.includes("기준 없음") ||
+    normalized.includes("기준없음") ||
+    normalized === "0원" ||
+    normalized === "0"
+  ) {
+    return true;
+  }
+
+  const manRegex = /(\d+(?:\.\d+)?)\s*만(?:원)?/g;
+  let match: RegExpExecArray | null;
+  while ((match = manRegex.exec(standardText)) !== null) {
+    if (Math.round(parseFloat(match[1]) * 10000) > 0) {
+      return true;
+    }
+  }
+
+  const wonRegex = /(\d{1,3}(?:,\d{3})+|\d{5,})\s*원/g;
+  while ((match = wonRegex.exec(standardText)) !== null) {
+    const value = parseInt(match[1].replace(/,/g, ""), 10);
+    if (value > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * CatalogEntry 객체로부터 전월 실적 구간 배열을 추출합니다.
  */
 export function getCardPerformanceTiers(entry: CatalogEntry): number[] {

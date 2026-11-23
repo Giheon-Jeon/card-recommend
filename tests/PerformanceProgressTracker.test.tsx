@@ -132,6 +132,48 @@ describe("PerformanceProgressTracker", () => {
     expect(tipBox).toHaveTextContent("실적 채우기 팁:");
     expect(tipBox).toHaveTextContent("카페/디저트");
     expect(tipBox).toHaveTextContent("10% 할인");
+    expect(
+      screen.queryByTestId("performance-unverified-notice"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("전월실적 기준이 없는 카탈로그 카드에 기본 구간이 적용되면 '카드사 기준 미확인 · 일반 구간 예시' 문구를 표시한다", () => {
+    const unverifiedCard = {
+      sourceId: 502,
+      sourceUrl: "https://example.com",
+      name: "미확인 실적 카드",
+      issuer: "신한카드",
+      category: "신용",
+      benefitSummary: "카페 10% 할인",
+      fetchedAt: "2026-10-01",
+    };
+
+    render(
+      <PerformanceProgressTracker
+        currentSpend={100000}
+        tiers={[300000, 700000, 1000000]}
+        cardName={unverifiedCard.name}
+        card={unverifiedCard}
+      />,
+    );
+
+    const notice = screen.getByTestId("performance-unverified-notice");
+    expect(notice).toHaveTextContent("카드사 기준 미확인 · 일반 구간 예시");
+  });
+
+  it("isEstimatedTiers가 true로 명시되면 미확인 안내 문구를 표시한다", () => {
+    render(
+      <PerformanceProgressTracker
+        currentSpend={100000}
+        tiers={[300000, 700000, 1000000]}
+        cardName="추정 구간 카드"
+        isEstimatedTiers={true}
+      />,
+    );
+
+    expect(screen.getByTestId("performance-unverified-notice")).toHaveTextContent(
+      "카드사 기준 미확인 · 일반 구간 예시",
+    );
   });
 
   it("axe 접근성 자동 검사를 통과해야 한다 (WCAG 준수)", async () => {

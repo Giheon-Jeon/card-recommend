@@ -2,7 +2,7 @@
  * 카드고릴라(card-gorilla.com) 상세 페이지에 SEO용으로 정적 렌더링되는
  * application/ld+json(schema.org Product)을 수집해 카드 기본정보 카탈로그를 생성합니다.
  *
- * 수집 항목: 카드명, 카드사, 카드 유형(신용/체크), 연회비, 이미지 URL, 혜택 요약 텍스트
+ * 수집 항목: 카드명, 카드사, 카드 유형(신용/체크), 연회비, 이미지 URL, 혜택 요약 텍스트, 전월실적 문구(performanceStandard)
  * 전월실적 구간별 상세 혜택(tiers)은 SPA 내부에서만 렌더링되어 이 스크립트로는 수집하지 않습니다.
  * data/cards/*.json에 실제 tiers를 채울 때 참고 자료로만 사용하세요.
  *
@@ -28,6 +28,7 @@ interface CatalogEntry {
   annualFee?: number;
   imageUrl?: string;
   benefitSummary?: string;
+  performanceStandard?: string;
   fetchedAt: string;
 }
 
@@ -83,11 +84,57 @@ function extractLdJsonProduct(html: string): any | null {
   return null;
 }
 
-function toCatalogEntry(id: number, product: any): CatalogEntry {
+/**
+ * HTML 문서 및 JSON-LD Product 정보에서 전월실적 문구(performanceStandard)를 추출합니다.
+ */
+function extractPerformanceStandard(html: string, product: any): string | undefined {
+  // 1. HTML의 <dt>전월실적</dt><dd>...</dd> 또는 레이블-값 쌍 구조 탐색
+  const dtDdMatch = html.match(
+    /<dt[^>]*>[^<]*(?:전월\s*실적|기준\s*실적)[^<]*<\/dt>\s*<dd[^>]*>([\s\S]*?)<\/dd>/i,
+  );
+  if (dtDdMatch) {
+    const cleaned = dtDdMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    if (cleaned) return cleaned;
+  }
+
+  // 2. JSON-LD additionalProperty / description 또는 HTML 본문 텍스트에서 전월실적 문구 탐색
+  const sources: string[] = [];
+  if (Array.isArray(product?.additionalProperty)) {
+    for (const prop of product.additionalProperty) {
+      const propName = String(prop?.name ?? "");
+      if (/전월\s*실적|기준\s*실적/.test(propName) && prop?.value) {
+        return String(prop.value).replace(/\s+/g, " ").trim();
+      }
+    }
+  }
+  if (typeof product?.description === "string") {
+    sources.push(product.description);
+  }
+  const plainText = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ");
+  sources.push(plainText);
+
+  const inlineRegex =
+    /(?:전월\s*실적|기준\s*실적)\s*[:：]?\s*((?:조건\s*없음|없음|무실적|실적\s*무관|직전\s*\d+개월[^.,\n<]{0,30}|\d+(?:,\d{3})*\s*만?\s*원\s*(?:이상|미만|부터)?(?:\s*[/,~]\s*\d+(?:,\d{3})*\s*만?\s*원\s*(?:이상)?)*))/i;
+
+  for (const src of sources) {
+    const match = src.match(inlineRegex);
+    if (match?.[1]) {
+      const normalized = match[1].replace(/\s+/g, " ").trim();
+      if (normalized) {
+        return normalized.startsWith("전월") ? normalized : `전월실적 ${normalized}`;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function toCatalogEntry(id: number, product: any, html: string): CatalogEntry {
   const rawName: string = product.name ?? "";
   const name = rawName.replace(/\s*\|\s*카드고릴라\s*$/, "").trim();
   const priceText: string | undefined = product.offers?.description;
   const price: number | undefined = typeof product.offers?.price === "number" ? product.offers.price : undefined;
+  const performanceStandard = extractPerformanceStandard(html, product);
 
   return {
     sourceId: id,
@@ -99,6 +146,7 @@ function toCatalogEntry(id: number, product: any): CatalogEntry {
     annualFee: price,
     imageUrl: product.image,
     benefitSummary: product.description,
+    ...(performanceStandard ? { performanceStandard } : {}),
     fetchedAt: new Date().toISOString(),
   };
 }
@@ -108,7 +156,7 @@ async function fetchOne(id: number): Promise<CatalogEntry | null> {
     const html = await fetchText(DETAIL_URL(id));
     const product = extractLdJsonProduct(html);
     if (!product) return null;
-    return toCatalogEntry(id, product);
+    return toCatalogEntry(id, product, html);
   } catch (err) {
     console.error(`[skip] id=${id}: ${(err as Error).message}`);
     return null;

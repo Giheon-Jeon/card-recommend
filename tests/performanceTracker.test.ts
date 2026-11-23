@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parsePerformanceTiers,
+  hasConfirmedPerformanceStandard,
   getCardPerformanceTiers,
   calculatePerformanceProgress,
 } from "@/lib/performanceTracker";
@@ -49,6 +50,21 @@ describe("performanceTracker", () => {
         fetchedAt: new Date().toISOString(),
       };
       expect(getCardPerformanceTiers(entry)).toEqual([500000]);
+    });
+  });
+
+  describe("hasConfirmedPerformanceStandard", () => {
+    it("전월실적 문구가 없거나 금액을 파싱할 수 없으면 false를 반환한다", () => {
+      expect(hasConfirmedPerformanceStandard(undefined)).toBe(false);
+      expect(hasConfirmedPerformanceStandard("")).toBe(false);
+      expect(hasConfirmedPerformanceStandard("상세 내용 참조")).toBe(false);
+    });
+
+    it("유효한 금액 구간이나 무실적 조건이 명시되어 있으면 true를 반환한다", () => {
+      expect(hasConfirmedPerformanceStandard("전월 30만원 이상")).toBe(true);
+      expect(hasConfirmedPerformanceStandard("전월 400,000원 이상")).toBe(true);
+      expect(hasConfirmedPerformanceStandard("실적조건 없음")).toBe(true);
+      expect(hasConfirmedPerformanceStandard("전월 무실적")).toBe(true);
     });
   });
 
