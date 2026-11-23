@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { formatWon } from "@/lib/format";
 import {
   calculatePerformanceProgress,
+  hasConfirmedPerformanceStandard,
   type PerformanceProgress,
 } from "@/lib/performanceTracker";
 import {
@@ -22,6 +23,8 @@ interface PerformanceProgressTrackerProps {
   currentDate?: Date | string | number;
   /** D-Day 및 부족 실적 소비 가이드 표시 여부 (기본값 true) */
   showDdayGuide?: boolean;
+  /** 카드사 공식 전월실적 기준이 미확인되어 기본 구간 예시를 사용 중인지 여부 */
+  isEstimatedTiers?: boolean;
 }
 
 export function PerformanceProgressTracker({
@@ -32,10 +35,21 @@ export function PerformanceProgressTracker({
   card,
   currentDate,
   showDdayGuide = true,
+  isEstimatedTiers,
 }: PerformanceProgressTrackerProps) {
   const progress: PerformanceProgress = useMemo(() => {
     return calculatePerformanceProgress(currentSpend, tiers);
   }, [currentSpend, tiers]);
+
+  // 카드사 공식 전월실적 기준 미확인 여부 판별
+  const showUnverifiedNotice = useMemo(() => {
+    if (progress.tiers.length === 0) return false;
+    if (isEstimatedTiers !== undefined) return isEstimatedTiers;
+    if (card && "sourceId" in card) {
+      return !hasConfirmedPerformanceStandard(card.performanceStandard);
+    }
+    return false;
+  }, [progress.tiers.length, isEstimatedTiers, card]);
 
   // 마감 D-Day 및 소비 추천 정보 산출
   const ddayInfo: PerformanceDdayInfo = useMemo(() => {
@@ -138,6 +152,16 @@ export function PerformanceProgressTracker({
           )}
         </div>
       </div>
+
+      {/* 카드사 전월실적 기준 미확인 시 기본 구간 예시 안내 */}
+      {showUnverifiedNotice && (
+        <p
+          data-testid="performance-unverified-notice"
+          className="text-[10px] font-medium text-slate-500 dark:text-slate-400"
+        >
+          카드사 기준 미확인 · 일반 구간 예시
+        </p>
+      )}
 
       {/* 시맨틱 progress 태그 및 WAI-ARIA 규격 준수 프로그레스 바 */}
       <div className="relative">
