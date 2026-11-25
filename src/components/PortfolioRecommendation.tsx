@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { formatWon } from "@/lib/format";
+import { getCategoryLabel } from "@/lib/loadCatalog";
 import type { Category } from "@/types/card";
 import type { PortfolioResult, PortfolioRecommendation, PortfolioSize } from "@/types/portfolio";
 import { useToast } from "@/hooks/useToast";
@@ -55,8 +56,6 @@ export function PortfolioRecommendationView({
   const activePortfolio: PortfolioRecommendation | null =
     selectedSize === 2 ? pair : trio;
 
-  const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
-
   // 카탈로그 ID(catalog-123 등)에서 숫자 sourceId 추출
   const cardSourceIds = useMemo(() => {
     if (!activePortfolio) return [];
@@ -78,7 +77,7 @@ export function PortfolioRecommendationView({
     return activePortfolio.cardAllocations.map((ca, idx) => {
       const palette = CARD_PALETTE[idx % CARD_PALETTE.length];
       const categoryNames = ca.assignedCategories
-        .map((catId) => categories.find((c) => c.id === catId)?.label ?? catId)
+        .map((catId) => getCategoryLabel(categories, catId))
         .join(", ");
 
       return {
@@ -282,7 +281,7 @@ export function PortfolioRecommendationView({
                         }`}
                       >
                         <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">
-                          {categoryLabel(assignment.category)}
+                          {getCategoryLabel(categories, assignment.category)}
                         </td>
                         <td className="px-3.5 py-2.5 text-right text-slate-600 dark:text-slate-400 font-mono">
                           {formatWon(assignment.spend)}

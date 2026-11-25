@@ -1,17 +1,17 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { Category } from "@/types/card";
 import type { CardEvaluation } from "@/types/recommendation";
+import { getCategoryLabel } from "@/lib/loadCatalog";
 
 /** 카드 id -> 한 문장 이내의 AI 조언 */
 export type CardAdviceMap = Record<string, string>;
 
 function buildCardSummary(evaluation: CardEvaluation, categories: Category[]): string {
-  const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
   const breakdownText = evaluation.breakdown.length
     ? evaluation.breakdown
         .map(
           (b) =>
-            `${categoryLabel(b.category)} 지출 ${Math.round(b.spend).toLocaleString()}원 -> 혜택 ${Math.round(
+            `${getCategoryLabel(categories, b.category)} 지출 ${Math.round(b.spend).toLocaleString()}원 -> 혜택 ${Math.round(
               b.benefitAmount
             ).toLocaleString()}원${b.capped ? " (한도 초과로 일부만 반영됨)" : ""}`
         )

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Printer } from "lucide-react";
 import { formatWon } from "@/lib/format";
+import { getCategoryLabel } from "@/lib/loadCatalog";
 import type { Category } from "@/types/card";
 import type { CardEvaluation, CategoryWinner } from "@/types/recommendation";
 import type { PortfolioResult } from "@/types/portfolio";
@@ -39,7 +40,6 @@ export function RecommendationResult({
 
   const eligible = ranked.filter((r) => r.meetsMinimum);
   const top = eligible[0] ?? null;
-  const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
   const activeWinners = categoryWinners.filter((w) => w.bestCard);
 
   const hasPortfolio = Boolean(portfolioResult?.pair || portfolioResult?.trio);
@@ -406,7 +406,7 @@ export function RecommendationResult({
                 >
                   <div className="min-w-0 pr-2">
                     <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
-                      {categoryLabel(winner.category)}
+                      {getCategoryLabel(categories, winner.category)}
                     </p>
                     <p className="truncate font-semibold text-slate-800 dark:text-slate-200">
                       {winner.bestCard ? winner.bestCard.name : "해당 없음"}

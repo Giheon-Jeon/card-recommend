@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import {
   SHORTCUT_CATEGORIES,
   SHORTCUT_DEFINITIONS,
   type ShortcutCategory,
 } from "@/hooks/useGlobalShortcuts";
+import { useModalBehavior } from "@/hooks/useModalBehavior";
 
 interface KeyboardShortcutsModalProps {
   isOpen: boolean;
@@ -17,78 +18,8 @@ export function KeyboardShortcutsModal({
   onClose,
 }: KeyboardShortcutsModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const prevActiveElementRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    prevActiveElementRef.current = document.activeElement as HTMLElement | null;
-
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const focusTimer = setTimeout(() => {
-      if (!dialogRef.current) return;
-      const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
-        'button:not([disabled]):not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusables.length > 0) {
-        focusables[0].focus();
-      }
-    }, 0);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-
-      if (e.key === "Tab") {
-        if (!dialogRef.current) return;
-        const focusables = Array.from(
-          dialogRef.current.querySelectorAll<HTMLElement>(
-            'button:not([disabled]):not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
-          ),
-        );
-
-        if (focusables.length === 0) {
-          e.preventDefault();
-          return;
-        }
-
-        const firstElement = focusables[0];
-        const lastElement = focusables[focusables.length - 1];
-
-        if (e.shiftKey) {
-          if (
-            document.activeElement === firstElement ||
-            !dialogRef.current.contains(document.activeElement)
-          ) {
-            e.preventDefault();
-            lastElement.focus();
-          }
-        } else {
-          if (
-            document.activeElement === lastElement ||
-            !dialogRef.current.contains(document.activeElement)
-          ) {
-            e.preventDefault();
-            firstElement.focus();
-          }
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      clearTimeout(focusTimer);
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = prevOverflow;
-      prevActiveElementRef.current?.focus?.();
-    };
-  }, [isOpen, onClose]);
+  useModalBehavior(dialogRef, isOpen, onClose);
 
   if (!isOpen) return null;
 

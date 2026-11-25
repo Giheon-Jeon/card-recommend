@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Printer } from "lucide-react";
 import type { CatalogEntry } from "@/types/catalog";
-import { formatWon } from "@/lib/format";
+import { formatWon, formatRate } from "@/lib/format";
 import { categories } from "@/lib/loadCatalog";
 import { catalogEntryToCard } from "@/lib/cardConverter";
+import { useModalBehavior } from "@/hooks/useModalBehavior";
 import type { Benefit } from "@/types/card";
 import { analyzeBreakEven, estimateMonthlyBenefitFromCard } from "@/lib/benefitCalculator";
 
@@ -47,7 +48,8 @@ export function CardComparisonModal({
   onRemoveCard,
 }: CardComparisonModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const prevActiveElementRef = useRef<HTMLElement | null>(null);
+
+  useModalBehavior(dialogRef, isOpen, onClose);
 
   // 각 카드의 파싱된 혜택 매핑 및 손익분기점(BEP) 분석
   const parsedCards = useMemo(() => {
@@ -89,74 +91,6 @@ export function CardComparisonModal({
     }
     return max;
   };
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    // 포커스 복원을 위한 이전 요소 기록
-    prevActiveElementRef.current = document.activeElement as HTMLElement | null;
-
-    // 배경 스크롤 차단
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    // 첫 포커스 가능한 요소로 자동 포커스
-    const focusTimer = setTimeout(() => {
-      if (!dialogRef.current) return;
-      const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
-        'button:not([disabled]):not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusables.length > 0) {
-        focusables[0].focus();
-      }
-    }, 0);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-
-      if (e.key === "Tab") {
-        if (!dialogRef.current) return;
-        const focusables = Array.from(
-          dialogRef.current.querySelectorAll<HTMLElement>(
-            'button:not([disabled]):not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
-          ),
-        );
-
-        if (focusables.length === 0) {
-          e.preventDefault();
-          return;
-        }
-
-        const firstElement = focusables[0];
-        const lastElement = focusables[focusables.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement || !dialogRef.current.contains(document.activeElement)) {
-            e.preventDefault();
-            lastElement.focus();
-          }
-        } else {
-          if (document.activeElement === lastElement || !dialogRef.current.contains(document.activeElement)) {
-            e.preventDefault();
-            firstElement.focus();
-          }
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      clearTimeout(focusTimer);
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = prevOverflow;
-      prevActiveElementRef.current?.focus?.();
-    };
-  }, [isOpen, onClose]);
 
   if (!isOpen || cards.length === 0) return null;
 
@@ -447,7 +381,7 @@ export function CardComparisonModal({
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-bold text-slate-900 dark:text-slate-100">
-                                  {(benefit.rate * 100).toFixed(1).replace(/\.0$/, "")}%{" "}
+                                  {formatRate(benefit.rate)}{" "}
                                   {benefit.type === "point" ? "적립" : benefit.type === "cashback" ? "캐시백" : "할인"}
                                 </span>
                                 {isBest && (
