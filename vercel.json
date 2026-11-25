@@ -1,0 +1,21 @@
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'sha256-OGxEwTuj2HRoDcnTfntL2izlWTnn4jyQJRmW8fhspJA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://d1c5n4ri2guedi.cloudfront.net; font-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ]
+}
