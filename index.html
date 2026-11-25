@@ -2,6 +2,10 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'sha256-OGxEwTuj2HRoDcnTfntL2izlWTnn4jyQJRmW8fhspJA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://d1c5n4ri2guedi.cloudfront.net; font-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -15,21 +19,8 @@
       content="국내 전체 카드를 비교하고 내 지출 패턴에 가장 유리한 카드를 오프라인에서도 분석·관리하세요."
     />
     <title>카드 혜택 트래커</title>
-    <script>
-      (function () {
-        try {
-          var stored = localStorage.getItem('theme-mode');
-          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-          if (stored === 'dark' || ((!stored || stored === 'system') && prefersDark)) {
-            document.documentElement.classList.add('dark');
-            document.documentElement.setAttribute('data-theme', 'dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-            document.documentElement.setAttribute('data-theme', 'light');
-          }
-        } catch (e) {}
-      })();
-    </script>
+    <!-- FOUC 방지 초기 테마 적용 스크립트 (CSP hash 동기화 유지) -->
+    <script>(function(){try{var s=localStorage.getItem('theme-mode'),d=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(s==='dark'||((!s||s==='system')&&d)){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-theme','dark');}else{document.documentElement.classList.remove('dark');document.documentElement.setAttribute('data-theme','light');}}catch(e){}})();</script>
   </head>
   <body>
     <div id="root"></div>
