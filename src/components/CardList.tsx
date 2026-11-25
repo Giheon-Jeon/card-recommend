@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { formatWon } from "@/lib/format";
+import { getCategoryLabel } from "@/lib/loadCatalog";
 import { getCardAdvice, type CardAdviceMap } from "@/lib/cardAdvice";
 import type { Category, CardType } from "@/types/card";
 import type { CardEvaluation } from "@/types/recommendation";
@@ -38,8 +39,6 @@ export function CardList({ evaluations, cardTypes, categories, onToggleCardType 
   const [advice, setAdvice] = useState<CardAdviceMap>({});
   const [adviceLoading, setAdviceLoading] = useState(false);
   const [adviceError, setAdviceError] = useState(null as string | null);
-
-  const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
 
   const handleGetAdvice = async () => {
     if (!apiKey) {
@@ -215,7 +214,7 @@ export function CardList({ evaluations, cardTypes, categories, onToggleCardType 
                                 .sort((a, b) => b.benefitAmount - a.benefitAmount)
                                 .map((item) => (
                                   <tr key={item.category} className="border-b border-slate-100 last:border-b-0">
-                                    <td className="py-1.5 pr-4 text-slate-700">{categoryLabel(item.category)}</td>
+                                    <td className="py-1.5 pr-4 text-slate-700">{getCategoryLabel(categories, item.category)}</td>
                                     <td className="py-1.5 pr-4 text-slate-500">{formatWon(item.spend)}</td>
                                     <td className="py-1.5 pr-4 font-medium text-slate-900">
                                       {formatWon(item.benefitAmount)}

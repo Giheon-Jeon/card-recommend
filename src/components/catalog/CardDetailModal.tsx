@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { CatalogEntry } from "@/types/catalog";
-import { formatWon } from "@/lib/format";
+import { formatWon, formatRate } from "@/lib/format";
 import { catalogEntryToCard } from "@/lib/cardConverter";
-import { categories } from "@/lib/loadCatalog";
+import { categories, getCategoryLabel } from "@/lib/loadCatalog";
+import { useModalBehavior } from "@/hooks/useModalBehavior";
 import { analyzeBreakEven, estimateMonthlyBenefitFromCard } from "@/lib/benefitCalculator";
 import { getExclusionsForCatalogEntry } from "@/lib/cardExclusionParser";
 
@@ -24,7 +25,8 @@ export function CardDetailModal({
   const [prevEntry, setPrevEntry] = useState(entry);
   const [imgError, setImgError] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const prevActiveElementRef = useRef<HTMLElement | null>(null);
+
+  useModalBehavior(dialogRef, entry !== null, onClose);
 
   if (entry !== prevEntry) {
     setPrevEntry(entry);
@@ -40,81 +42,6 @@ export function CardDetailModal({
   const bepAnalysis = entry
     ? analyzeBreakEven(effectiveMonthlyBenefit, entry.annualFee || 0)
     : null;
-
-  const getCategoryLabel = (catId: string) => {
-    return categories.find((c) => c.id === catId)?.label || catId;
-  };
-
-  useEffect(() => {
-    if (!entry) return;
-
-    // 모달 활성화 전 포커스 위치 보관 (Focus Restoration)
-    prevActiveElementRef.current = document.activeElement as HTMLElement | null;
-
-    // 배경 스크롤 차단 및 이전 스타일 저장
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    // 첫 번째 포커스 가능한 요소로 자동 포커스
-    const focusTimer = setTimeout(() => {
-      if (!dialogRef.current) return;
-      const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
-        'button:not([disabled]):not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusables.length > 0) {
-        focusables[0].focus();
-      }
-    }, 0);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape 키 입력 시 모달 닫기
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-
-      // Tab 키 입력 시 포커스 트랩(Focus Trap) 순환 제어
-      if (e.key === "Tab") {
-        if (!dialogRef.current) return;
-        const focusables = Array.from(
-          dialogRef.current.querySelectorAll<HTMLElement>(
-            'button:not([disabled]):not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])'
-          )
-        );
-
-        if (focusables.length === 0) {
-          e.preventDefault();
-          return;
-        }
-
-        const firstElement = focusables[0];
-        const lastElement = focusables[focusables.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement || !dialogRef.current.contains(document.activeElement)) {
-            e.preventDefault();
-            lastElement.focus();
-          }
-        } else {
-          if (document.activeElement === lastElement || !dialogRef.current.contains(document.activeElement)) {
-            e.preventDefault();
-            firstElement.focus();
-          }
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      clearTimeout(focusTimer);
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = prevOverflow;
-      // 모달 종료 시 이전 활성 요소로 포커스 복원
-      prevActiveElementRef.current?.focus?.();
-    };
-  }, [entry, onClose]);
 
   if (!entry) return null;
   const showImage = entry.imageUrl && !imgError;
@@ -341,7 +268,7 @@ export function CardDetailModal({
                     {benefits.map((b, idx) => (
                       <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                         <td className="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">
-                          {getCategoryLabel(b.category)}
+                          {getCategoryLabel(categories, b.category)}
                           {b.description && (
                             <span className="block max-w-[170px] truncate text-[11px] font-normal text-slate-400 dark:text-slate-500">
                               {b.description}
@@ -354,7 +281,7 @@ export function CardDetailModal({
                           </span>
                         </td>
                         <td className="px-3 py-2 font-semibold text-indigo-600 dark:text-indigo-400">
-                          {(b.rate * 100).toFixed(1).replace(/\.0$/, "")}%
+                          {formatRate(b.rate)}
                         </td>
                         <td className="px-3 py-2 text-right">
                           {b.capPerMonth ? formatWon(b.capPerMonth) : "무제한"}

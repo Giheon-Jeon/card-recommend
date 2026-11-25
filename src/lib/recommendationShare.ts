@@ -1,4 +1,5 @@
 import { formatWon } from "@/lib/format";
+import { getCategoryLabel } from "@/lib/loadCatalog";
 import type { Category } from "@/types/card";
 import type { CardEvaluation, CategoryWinner } from "@/types/recommendation";
 import type { PortfolioRecommendation } from "@/types/portfolio";
@@ -24,7 +25,6 @@ export function formatSingleRecommendationSummary(
   options: ShareFormatOptions = {},
 ): string {
   const { includeSpendDetails = false } = options;
-  const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
 
   const cardTypeLabel = topCard.card.cardType === "credit" ? "신용카드" : "체크카드";
   const monthlyAnnualFee = Math.round(topCard.card.annualFee / 12);
@@ -43,7 +43,7 @@ export function formatSingleRecommendationSummary(
     lines.push("");
     lines.push("📌 카테고리별 최적 카드");
     activeWinners.forEach((winner) => {
-      const catName = categoryLabel(winner.category);
+      const catName = getCategoryLabel(categories, winner.category);
       const cardName = winner.bestCard?.name ?? "해당 없음";
       const benefitStr = `+${formatWon(winner.benefitAmount)}`;
 
@@ -72,7 +72,6 @@ export function formatPortfolioRecommendationSummary(
   options: ShareFormatOptions = {},
 ): string {
   const { includeSpendDetails = false } = options;
-  const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
 
   const monthlyAnnualFee = Math.round(portfolio.totalAnnualFee / 12);
 
@@ -107,7 +106,7 @@ export function formatPortfolioRecommendationSummary(
     lines.push("");
     lines.push("📋 카테고리별 추천 결제 카드 배분표");
     portfolio.categoryAssignments.forEach((assign) => {
-      const catName = categoryLabel(assign.category);
+      const catName = getCategoryLabel(categories, assign.category);
       const cardName = assign.assignedCard.name;
       const rateStr = `${(assign.rate * 100).toFixed(1)}%`;
       const benefitStr = `+${formatWon(assign.benefitAmount)}`;

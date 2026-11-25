@@ -5,6 +5,10 @@ import type { Category } from "@/types/card";
 
 export const categories: Category[] = categoriesJson as Category[];
 
+/** 카테고리 ID를 사람이 읽는 라벨로 변환한다. 미등록 ID는 원본 값을 그대로 반환. */
+export const getCategoryLabel = (categoryList: Category[], id: string): string =>
+  categoryList.find((c) => c.id === id)?.label ?? id;
+
 const raw = catalogJson as CatalogEntry[];
 
 // 이름이 비어있는 항목(사이트맵 오탐 등)은 카드 목록에서 제외합니다.
